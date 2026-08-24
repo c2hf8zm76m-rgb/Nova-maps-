@@ -1,0 +1,8 @@
+name = "nova-maps"
+main = "_worker.js"
+compatibility_date = "2026-08-24"
+
+[assets]
+directory = "."
+binding = "ASSETS"
+run_worker_first = true
