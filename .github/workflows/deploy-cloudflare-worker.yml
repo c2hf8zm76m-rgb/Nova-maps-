@@ -1,13 +1,6 @@
 name: Deploy Cloudflare Worker
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '_worker.js'
-      - 'wrangler.toml'
-      - 'audify/**'
-      - '.github/workflows/deploy-cloudflare-worker.yml'
   workflow_dispatch:
 
 jobs:
