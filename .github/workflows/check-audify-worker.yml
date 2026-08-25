@@ -13,9 +13,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Wait for Cloudflare deploy
-        run: sleep 20
       - name: Check Audify search endpoint
         run: |
           set -x
-          curl -i --fail --max-time 20 'https://weathered-truth-74c7.alo12230.workers.dev/api/audify-search?q=niska'
+          curl -i --fail --max-time 25 'https://weathered-truth-74c7.ten-dart.workers.dev/api/audify-search?q=niska'
