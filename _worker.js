@@ -14,6 +14,22 @@ function json(data,status=200,extra={}){
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    if(url.pathname==='/api/ip-location'){
+      const cf=request.cf||{};
+      const latitude=n(cf.latitude), longitude=n(cf.longitude);
+      return json({
+        ok:latitude!==null&&longitude!==null,
+        latitude,longitude,
+        city:cf.city||'',
+        region:cf.region||'',
+        country:cf.country||'',
+        timezone:cf.timezone||'',
+        colo:cf.colo||'',
+        source:'cloudflare-network'
+      },200,{'cache-control':'private, no-store'});
+    }
+
     if (url.pathname !== '/api/pois') return env.ASSETS.fetch(request);
 
     const s=n(url.searchParams.get('s')), w=n(url.searchParams.get('w')), nn=n(url.searchParams.get('n')), e=n(url.searchParams.get('e'));
@@ -39,7 +55,7 @@ export default {
         const r=await fetch(mirror,{method:'POST',body,signal:ctl.signal,headers:{
           'content-type':'application/x-www-form-urlencoded;charset=UTF-8',
           'accept':'application/json',
-          'user-agent':'NOVA-Maps/0.6.9.7 (Cloudflare POI cache)'
+          'user-agent':'NOVA-Maps/0.6.9.9 (Cloudflare POI cache)'
         }});
         if(!r.ok){ last=`${mirror} HTTP ${r.status}`; continue; }
         const text=await r.text();
