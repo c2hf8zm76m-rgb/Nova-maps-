@@ -1,12 +1,19 @@
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 const S={player:null,ready:false,current:null,results:[],index:-1};
-const INV=['https://inv.nadeko.net','https://invidious.nerdvpn.de','https://yt.chocolatemoo53.com'];
+const AUDIFY_SEARCH_API='https://weathered-truth-74c7.alo12230.workers.dev/api/audify-search';
+const SEARCH_INSTANCES=['https://yewtu.be','https://inv.nadeko.net','https://invidious.nerdvpn.de','https://yt.chocolatemoo53.com'];
+const SEARCH_WRAPPERS=[
+  {name:'allorigins',wrap:u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`},
+  {name:'corsproxy',wrap:u=>`https://corsproxy.io/?${encodeURIComponent(u)}`},
+  {name:'direct',wrap:u=>u}
+];
 
 const fmt=n=>{n=Math.max(0,Math.floor(n||0));return Math.floor(n/60)+':'+String(n%60).padStart(2,'0')};
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),1600)};
 const videoIdFrom=v=>{const m=String(v).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([\w-]{11})/);return m?.[1]||(/^[\w-]{11}$/.test(String(v))?String(v):null)};
+const textFrom=t=>t?.simpleText||t?.runs?.map(r=>r.text).join('')||'';
 
 window.onYouTubeIframeAPIReady=()=>{
   S.player=new YT.Player('yt',{
@@ -41,23 +48,81 @@ function renderResults(items){
   $$('[data-play]').forEach(b=>b.onclick=()=>playTrack(items[+b.dataset.play],+b.dataset.play));
 }
 
+async function fetchText(url,timeout=6500){
+  const ctl=new AbortController();
+  const timer=setTimeout(()=>ctl.abort(),timeout);
+  try{
+    const res=await fetch(url,{signal:ctl.signal,headers:{accept:'application/json,text/plain,text/html,*/*'}});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.text();
+  }finally{clearTimeout(timer)}
+}
+
+async function searchViaBackend(q){
+  const raw=await fetchText(`${AUDIFY_SEARCH_API}?q=${encodeURIComponent(q)}`,9000);
+  const data=JSON.parse(raw);
+  const items=Array.isArray(data?.items)?data.items:[];
+  if(!items.length) throw new Error(data?.error||'Backend sans résultat');
+  return items.slice(0,20).map(x=>({
+    id:x.id,
+    title:x.title||'Sans titre',
+    artist:x.artist||'YouTube',
+    thumbnail:x.thumbnail||`https://i.ytimg.com/vi/${x.id}/hqdefault.jpg`
+  })).filter(x=>x.id);
+}
+
+async function searchViaInvidious(q){
+  let last='';
+  for(const instance of SEARCH_INSTANCES){
+    const target=`${instance}/api/v1/search?q=${encodeURIComponent(q)}&type=video&hl=fr`;
+    for(const wrapper of SEARCH_WRAPPERS){
+      try{
+        const raw=await fetchText(wrapper.wrap(target),6000);
+        const data=JSON.parse(raw);
+        const items=(Array.isArray(data)?data:[])
+          .filter(x=>x && x.videoId)
+          .slice(0,20)
+          .map(x=>({id:x.videoId,title:x.title||'Sans titre',artist:x.author||'YouTube',thumbnail:`https://i.ytimg.com/vi/${x.videoId}/hqdefault.jpg`}));
+        if(items.length) return items;
+        last=`Aucun résultat via ${wrapper.name}`;
+      }catch(e){last=`${wrapper.name}: ${e?.message||'erreur'}`}
+    }
+  }
+  throw new Error(last||'Échec Invidious');
+}
+
+function collectVideoRenderers(node,out=[]){
+  if(!node||typeof node!=='object') return out;
+  if(Array.isArray(node)){for(const v of node)collectVideoRenderers(v,out);return out}
+  if(node.videoRenderer)out.push(node.videoRenderer);
+  for(const k in node)collectVideoRenderers(node[k],out);
+  return out;
+}
+
+async function searchViaYoutubeHtml(q){
+  const target=`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&hl=fr`;
+  let html='',last='';
+  for(const wrapper of SEARCH_WRAPPERS){
+    try{html=await fetchText(wrapper.wrap(target),7000);if(html&&/ytInitialData|videoRenderer/.test(html))break}catch(e){last=`${wrapper.name}: ${e?.message||'erreur'}`}
+  }
+  if(!html)throw new Error(last||'Impossible de récupérer YouTube');
+  const m=html.match(/var ytInitialData = (\{.*?\});<\/script>/s)||html.match(/"ytInitialData"\s*[:=]\s*(\{.*?\})\s*;?<\/script>/s);
+  if(!m)throw new Error('ytInitialData introuvable');
+  let data;try{data=JSON.parse(m[1])}catch{throw new Error('Données YouTube illisibles')}
+  const items=collectVideoRenderers(data,[]).slice(0,20).map(v=>({id:v.videoId,title:textFrom(v.title)||'Sans titre',artist:textFrom(v.ownerText)||textFrom(v.longBylineText)||'YouTube',thumbnail:`https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`})).filter(x=>x.id);
+  if(items.length)return items;
+  throw new Error('Aucune vidéo trouvée');
+}
+
 async function search(){
   const q=$('#q').value.trim();if(!q)return;
   const r=$('#results');$('#resultsView').hidden=false;$('#nowPlaying').hidden=true;r.className='empty';r.innerHTML='Recherche…';
   const direct=videoIdFrom(q);
   if(direct){renderResults([{id:direct,title:'Vidéo YouTube',artist:'YouTube',thumbnail:`https://i.ytimg.com/vi/${direct}/hqdefault.jpg`}]);return}
+  const methods=[searchViaBackend,searchViaInvidious,searchViaYoutubeHtml];
   let last='';
-  for(const base of INV){
-    const ctl=new AbortController();const timer=setTimeout(()=>ctl.abort(),5500);
-    try{
-      const url=base+'/api/v1/search?q='+encodeURIComponent(q)+'&type=video&hl=fr';
-      const res=await fetch(url,{signal:ctl.signal,headers:{accept:'application/json'}});clearTimeout(timer);
-      if(!res.ok){last=`${base} : HTTP ${res.status}`;continue}
-      const data=await res.json();
-      const items=(Array.isArray(data)?data:[]).filter(x=>x?.type==='video'&&x.videoId).slice(0,20).map(x=>({id:x.videoId,title:x.title||'Sans titre',artist:x.author||'YouTube',thumbnail:`https://i.ytimg.com/vi/${x.videoId}/hqdefault.jpg`}));
-      if(items.length){renderResults(items);return}
-      last='Aucun résultat sur '+base;
-    }catch(e){clearTimeout(timer);last=e?.name==='AbortError'?'Serveur de recherche trop lent':String(e?.message||e)}
+  for(const method of methods){
+    try{const items=await method(q);if(items?.length){renderResults(items);return}}catch(e){last=e?.message||String(e)}
   }
   r.className='empty';r.innerHTML='<b>Recherche temporairement indisponible</b><br><br>'+esc(last||'Réessaie dans quelques secondes.');
 }
@@ -74,14 +139,8 @@ function playTrack(t,index=-1){
   const load=()=>S.ready?S.player.loadVideoById(t.id):setTimeout(load,100);load();
 }
 
-function nextTrack(){
-  if(!S.results.length)return;
-  const i=S.index<0?0:(S.index+1)%S.results.length;playTrack(S.results[i],i);
-}
-function prevTrack(){
-  if(!S.results.length){if(S.ready)S.player.seekTo(0,true);return}
-  const i=S.index<=0?S.results.length-1:S.index-1;playTrack(S.results[i],i);
-}
+function nextTrack(){if(!S.results.length)return;const i=S.index<0?0:(S.index+1)%S.results.length;playTrack(S.results[i],i)}
+function prevTrack(){if(!S.results.length){if(S.ready)S.player.seekTo(0,true);return}const i=S.index<=0?S.results.length-1:S.index-1;playTrack(S.results[i],i)}
 
 function fallbackColor(seed){let h=0;for(const c of String(seed||''))h=(h*31+c.charCodeAt(0))>>>0;return `hsl(${h%360} 38% 22%)`}
 function lighter(rgb){const m=String(rgb).match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);if(!m)return rgb;const a=m.slice(1).map(Number).map(v=>Math.min(255,Math.round(v*1.28+18)));return `rgb(${a[0]},${a[1]},${a[2]})`}
