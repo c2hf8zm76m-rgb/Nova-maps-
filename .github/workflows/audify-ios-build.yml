@@ -1,0 +1,81 @@
+name: Build Audify iOS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'audify/**'
+      - 'audify-ios/**'
+      - '.github/workflows/audify-ios-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Capacitor
+        working-directory: audify-ios
+        run: npm install
+
+      - name: Prepare Audify web assets
+        working-directory: audify-ios
+        run: npm run prepare:web
+
+      - name: Generate iOS project
+        working-directory: audify-ios
+        run: npx cap add ios
+
+      - name: Sync Capacitor
+        working-directory: audify-ios
+        run: npx cap sync ios
+
+      - name: Enable iOS background audio
+        working-directory: audify-ios
+        run: |
+          PLIST="ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string audio" "$PLIST"
+          node scripts/patch-ios.mjs
+          plutil -p "$PLIST" | grep -A4 UIBackgroundModes
+
+      - name: Build for iPhone Simulator
+        working-directory: audify-ios
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package Xcode project
+        working-directory: audify-ios
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent ios Audify-iOS-Xcode.zip
+
+      - name: Upload Xcode project
+        uses: actions/upload-artifact@v4
+        with:
+          name: Audify-iOS-Xcode
+          path: audify-ios/Audify-iOS-Xcode.zip
+          retention-days: 14
+
+      - name: Upload simulator app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Audify-iOS-Simulator-App
+          path: audify-ios/build/Build/Products/Debug-iphonesimulator/App.app
+          retention-days: 14
