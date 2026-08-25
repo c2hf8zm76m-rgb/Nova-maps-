@@ -1,10 +1,9 @@
-name: Check Audify Worker
+name: Check Audify Search
 
 on:
   push:
     branches: [main]
     paths:
-      - '_worker.js'
       - 'audify/**'
       - '.github/workflows/check-audify-worker.yml'
   workflow_dispatch:
@@ -13,24 +12,30 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Check Piped YouTube search instances
+      - name: Check YouTube InnerTube search
         shell: bash
         run: |
-          set +e
-          for base in \
-            'https://pipedapi.kavin.rocks' \
-            'https://pipedapi.tokhmi.xyz' \
-            'https://pipedapi.moomoo.me' \
-            'https://pipedapi.syncpundit.io' \
-            'https://api-piped.mha.fi' \
-            'https://piped-api.garudalinux.org' \
-            'https://pipedapi.rivo.lol' \
-            'https://pipedapi.leptons.xyz'; do
-            echo "===== $base ====="
-            curl -sS --max-time 12 -D /tmp/headers "$base/search?q=niska&filter=videos" -o /tmp/body
-            code=$?
-            echo "curl=$code"
-            grep -iE 'HTTP/|access-control-allow-origin|content-type' /tmp/headers | tail -n 6 || true
-            head -c 300 /tmp/body || true
+          cat > /tmp/body.json <<'JSON'
+          {
+            "context": {
+              "client": {
+                "clientName": "WEB",
+                "clientVersion": "2.20260114.08.00",
+                "hl": "fr",
+                "gl": "FR"
+              }
+            },
+            "query": "niska"
+          }
+          JSON
+          for endpoint in \
+            'https://www.youtube.com/youtubei/v1/search?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8&prettyPrint=false' \
+            'https://youtubei.googleapis.com/youtubei/v1/search?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8&prettyPrint=false'; do
+            echo "===== $endpoint ====="
+            curl -sS --max-time 20 -D /tmp/headers -H 'content-type: application/json' -H 'origin: https://example.com' --data-binary @/tmp/body.json "$endpoint" -o /tmp/body
+            grep -iE 'HTTP/|access-control-allow-origin|access-control-allow-methods|content-type' /tmp/headers | tail -n 10 || true
+            head -c 500 /tmp/body || true
             echo
+            echo "videoIds:"
+            grep -Eo '"videoId":"[A-Za-z0-9_-]{11}"' /tmp/body | head -n 8 || true
           done
