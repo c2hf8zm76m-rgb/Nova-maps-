@@ -38,24 +38,24 @@ export default {
 
     const pad=.006;
     const S=q4(s-pad), W=q4(w-pad), N=q4(nn+pad), E=q4(e+pad);
-    const key=new Request(`${url.origin}/__poi_cache/${S.toFixed(2)}/${W.toFixed(2)}/${N.toFixed(2)}/${E.toFixed(2)}`);
+    const key=new Request(`${url.origin}/__poi_cache_v10/${S.toFixed(2)}/${W.toFixed(2)}/${N.toFixed(2)}/${E.toFixed(2)}`);
     const cache=caches.default;
     const cached=await cache.match(key);
     if(cached) return new Response(cached.body,{status:cached.status,headers:cached.headers});
 
     const box=`${S},${W},${N},${E}`;
-    const query=`[out:json][timeout:10];(nwr(${box})[name][amenity];nwr(${box})[name][shop];nwr(${box})[name][tourism];nwr(${box})[name][leisure];nwr(${box})[name][aeroway];nwr(${box})[name][railway];nwr(${box})[name][office];nwr(${box})[name][healthcare];nwr(${box})[name][craft];nwr(${box})[name][public_transport];nwr(${box})[name][historic];);out center tags qt 650;`;
+    const query=`[out:json][timeout:11];(nwr(${box})[name][amenity];nwr(${box})[name][shop];nwr(${box})[name][tourism];nwr(${box})[name][leisure];nwr(${box})[name][aeroway];nwr(${box})[name][railway];nwr(${box})[name][office];nwr(${box})[name][healthcare];nwr(${box})[name][craft];nwr(${box})[name][public_transport];nwr(${box})[name][historic];nwr(${box})[name][emergency];nwr(${box})[name][sport];nwr(${box})[name][club];nwr(${box})[name][natural=beach];);out center tags qt 900;`;
     const body='data='+encodeURIComponent(query);
     let last='';
 
     for(const mirror of MIRRORS){
       const ctl=new AbortController();
-      const timer=setTimeout(()=>ctl.abort(),8500);
+      const timer=setTimeout(()=>ctl.abort(),9000);
       try{
         const r=await fetch(mirror,{method:'POST',body,signal:ctl.signal,headers:{
           'content-type':'application/x-www-form-urlencoded;charset=UTF-8',
           'accept':'application/json',
-          'user-agent':'NOVA-Maps/0.6.9.9 (Cloudflare POI cache)'
+          'user-agent':'NOVA-Maps/0.6.10.0 (Cloudflare POI cache)'
         }});
         if(!r.ok){ last=`${mirror} HTTP ${r.status}`; continue; }
         const text=await r.text();
