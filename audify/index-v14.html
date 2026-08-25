@@ -3,23 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Audify</title>
-  <link rel="stylesheet" href="./style.css?v=20260825-14">
+  <title>Audify V15</title>
+  <link rel="stylesheet" href="./style.css?v=20260825-15">
   <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
   <div id="ambient" class="ambient"></div>
-  <header class="floating-search">
-    <div class="search-shell">
-      <span class="search-icon">⌕</span>
-      <input id="q" autocomplete="off" inputmode="search" placeholder="Rechercher un artiste ou un titre…">
-      <button id="go">Rechercher</button>
-    </div>
-  </header>
+  <header class="floating-search"><div class="search-shell"><span class="search-icon">⌕</span><input id="q" autocomplete="off" inputmode="search" placeholder="Rechercher un artiste ou un titre…"><button id="go">Rechercher</button></div></header>
   <main>
-    <section id="resultsView" class="results-view">
-      <div id="results" class="empty">Recherche une musique pour commencer.</div>
-    </section>
+    <section id="resultsView" class="results-view"><div id="results" class="empty">Recherche une musique pour commencer.</div></section>
     <section id="nowPlaying" class="now-playing" hidden>
       <div id="waves" class="waves" aria-hidden="true">
         <svg viewBox="0 0 1600 260" preserveAspectRatio="none" class="wave w1"><path d="M-120 140 C 40 20 190 240 360 130 S 690 35 850 135 S 1160 230 1320 120 S 1550 35 1720 140"/></svg>
@@ -27,34 +19,13 @@
         <svg viewBox="0 0 1600 260" preserveAspectRatio="none" class="wave w3"><path d="M-120 150 C 80 90 230 205 410 145 S 730 88 900 148 S 1210 205 1380 145 S 1600 90 1730 150"/></svg>
         <svg viewBox="0 0 1600 260" preserveAspectRatio="none" class="wave w4"><path d="M-120 105 C 20 5 210 250 400 110 S 720 10 900 110 S 1220 245 1410 105 S 1610 10 1740 110"/></svg>
       </div>
-      <div id="artworkStage" class="artwork-stage">
-        <div id="vinyl" class="vinyl"><div id="vinylLabel" class="vinyl-label"></div></div>
-        <div id="cover" class="cover"></div>
-      </div>
-      <div class="track-copy">
-        <h1 id="title">Aucun titre</h1>
-        <p id="artist">—</p>
-      </div>
-      <div class="compact-player">
-        <button id="prev" class="icon-btn">◀</button>
-        <button id="play" class="play-btn">▶</button>
-        <button id="next" class="icon-btn">▶</button>
-        <div class="timeline">
-          <span id="ct">0:00</span>
-          <input id="progress" type="range" min="0" max="1000" value="0">
-          <span id="dur">0:00</span>
-        </div>
-        <button id="showVideo" class="video-btn">▣ Vidéo</button>
-        <span class="volume-icon">🔊</span>
-        <input id="volume" class="volume" type="range" min="0" max="100" value="80">
-      </div>
+      <div id="artworkStage" class="artwork-stage"><div id="vinyl" class="vinyl"><div id="vinylLabel" class="vinyl-label"></div></div><div id="cover" class="cover"></div></div>
+      <div class="track-copy"><h1 id="title">Aucun titre</h1><p id="artist">—</p></div>
+      <div class="compact-player"><button id="prev" class="icon-btn">◀</button><button id="play" class="play-btn">▶</button><button id="next" class="icon-btn">▶</button><div class="timeline"><span id="ct">0:00</span><input id="progress" type="range" min="0" max="1000" value="0"><span id="dur">0:00</span></div><button id="showVideo" class="video-btn">▣ Vidéo</button><span class="volume-icon">🔊</span><input id="volume" class="volume" type="range" min="0" max="100" value="80"></div>
     </section>
   </main>
-  <aside id="videoPanel" class="video-panel">
-    <div class="video-head"><span>YouTube</span><button id="closeVideo">×</button></div>
-    <div id="yt"></div>
-  </aside>
+  <aside id="videoPanel" class="video-panel"><div class="video-head"><span>YouTube</span><button id="closeVideo">×</button></div><div id="yt"></div></aside>
   <div id="toast" class="toast"></div>
-  <script src="./app.js?v=20260825-14"></script>
+  <script src="./app.js?v=20260825-15-official"></script>
 </body>
 </html>
