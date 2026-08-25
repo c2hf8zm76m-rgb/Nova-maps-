@@ -12,30 +12,30 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Check YouTube InnerTube search
+      - name: Check current Piped search instances
         shell: bash
         run: |
-          cat > /tmp/body.json <<'JSON'
-          {
-            "context": {
-              "client": {
-                "clientName": "WEB",
-                "clientVersion": "2.20260114.08.00",
-                "hl": "fr",
-                "gl": "FR"
-              }
-            },
-            "query": "niska"
-          }
-          JSON
-          for endpoint in \
-            'https://www.youtube.com/youtubei/v1/search?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8&prettyPrint=false' \
-            'https://youtubei.googleapis.com/youtubei/v1/search?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8&prettyPrint=false'; do
-            echo "===== $endpoint ====="
-            curl -sS --max-time 20 -D /tmp/headers -H 'content-type: application/json' -H 'origin: https://example.com' --data-binary @/tmp/body.json "$endpoint" -o /tmp/body
-            grep -iE 'HTTP/|access-control-allow-origin|access-control-allow-methods|content-type' /tmp/headers | tail -n 10 || true
-            head -c 500 /tmp/body || true
+          set +e
+          for base in \
+            'https://pipedapi.nosebs.ru' \
+            'https://pipedapi-libre.kavin.rocks' \
+            'https://piped-api.privacy.com.de' \
+            'https://pipedapi.adminforge.de' \
+            'https://api.piped.yt' \
+            'https://pipedapi.drgns.space' \
+            'https://pipedapi.owo.si' \
+            'https://pipedapi.ducks.party' \
+            'https://piped-api.codespace.cz' \
+            'https://pipedapi.reallyaweso.me' \
+            'https://api.piped.private.coffee' \
+            'https://pipedapi.darkness.services' \
+            'https://pipedapi.orangenet.cc'; do
+            echo "===== $base ====="
+            rm -f /tmp/headers /tmp/body
+            curl -sS --max-time 7 -D /tmp/headers "$base/search?q=niska&filter=videos" -o /tmp/body
+            code=$?
+            echo "curl=$code"
+            test -f /tmp/headers && grep -iE 'HTTP/|access-control-allow-origin|content-type' /tmp/headers | tail -n 7 || true
+            test -f /tmp/body && head -c 220 /tmp/body || true
             echo
-            echo "videoIds:"
-            grep -Eo '"videoId":"[A-Za-z0-9_-]{11}"' /tmp/body | head -n 8 || true
           done
