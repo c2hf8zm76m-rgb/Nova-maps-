@@ -11,8 +11,15 @@ function json(data,status=200,extra={}){
   return new Response(JSON.stringify(data),{status,headers:{
     'content-type':'application/json; charset=utf-8',
     'cache-control':'public, max-age=60, s-maxage=1800, stale-while-revalidate=21600',
+    'permissions-policy':'geolocation=(self)',
     ...extra
   }});
+}
+async function staticResponse(request,env){
+  const r=await env.ASSETS.fetch(request);
+  const h=new Headers(r.headers);
+  h.set('Permissions-Policy','geolocation=(self)');
+  return new Response(r.body,{status:r.status,statusText:r.statusText,headers:h});
 }
 function dedupe(a=[]){
   const seen=new Set(), out=[];
@@ -37,7 +44,7 @@ async function overpass(query, deadlineMs=11000){
       const r=await fetch(mirror,{method:'POST',body,signal:ctl.signal,headers:{
         'content-type':'application/x-www-form-urlencoded;charset=UTF-8',
         'accept':'application/json',
-        'user-agent':'NOVA-Maps/0.6.10.1 (Cloudflare POI cache)'
+        'user-agent':'NOVA-Maps/0.6.10.3 (Cloudflare POI cache)'
       }});
       if(!r.ok){ last=`${mirror} HTTP ${r.status}`; continue; }
       const data=await r.json();
@@ -64,7 +71,7 @@ export default {
       },200,{'cache-control':'private, no-store'});
     }
 
-    if(url.pathname!=='/api/pois') return env.ASSETS.fetch(request);
+    if(url.pathname!=='/api/pois') return staticResponse(request,env);
 
     const s=n(url.searchParams.get('s')), w=n(url.searchParams.get('w')),
           nn=n(url.searchParams.get('n')), e=n(url.searchParams.get('e'));
