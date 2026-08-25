@@ -3,15 +3,12 @@
 
   const VERSION='0.6.10.0';
   try{
-    if(localStorage.nmPoiLibraryVersion!==VERSION){
-      localStorage.removeItem('nmPoi7');
-      localStorage.nmPoiLibraryVersion=VERSION;
-    }
+    localStorage.removeItem('nmPoi7');
+    localStorage.nmPoiLibraryVersion=VERSION;
   }catch{}
 
   const poiMeta=new Map();
   const key=(lat,lon)=>`${Number(lat).toFixed(5)}|${Number(lon).toFixed(5)}`;
-
   const spec=(id,emoji,label,priority=6)=>({id,emoji,label,priority});
 
   function classify(t={}){
@@ -46,7 +43,7 @@
       if(t.religion==='muslim') return spec('mosque','🕌','Mosquée',8);
       if(t.religion==='christian') return spec('church','⛪','Église',8);
       if(t.religion==='jewish') return spec('synagogue','🕍','Synagogue',8);
-      if(t.religion==='buddhist') return spec('temple','🛕','Temple',8);
+      if(t.religion==='buddhist'||t.religion==='hindu') return spec('temple','🛕','Temple',8);
       return spec('worship','🙏','Lieu de culte',8);
     }
     if(a==='taxi') return spec('taxi','🚕','Taxi',8);
@@ -107,15 +104,13 @@
     if(sport) return spec('sport','🏅','Sport',7);
     if(office) return spec('office','🏢','Bureau / entreprise',6);
     if(craft) return spec('craft','🛠️','Artisan',6);
-
     return spec('place','📍','Lieu',4);
   }
 
   function remember(data){
     for(const el of data?.elements||[]){
       const lat=Number(el.lat??el.center?.lat), lon=Number(el.lon??el.center?.lon);
-      if(!Number.isFinite(lat)||!Number.isFinite(lon)) continue;
-      poiMeta.set(key(lat,lon),el.tags||{});
+      if(Number.isFinite(lat)&&Number.isFinite(lon)) poiMeta.set(key(lat,lon),el.tags||{});
     }
   }
 
@@ -124,7 +119,7 @@
     const response=await realFetch(input,init);
     try{
       const url=typeof input==='string'?input:input?.url||'';
-      if(url.includes('/api/pois')) response.clone().json().then(remember).catch(()=>{});
+      if(url.includes('/api/pois')) remember(await response.clone().json());
     }catch{}
     return response;
   };
