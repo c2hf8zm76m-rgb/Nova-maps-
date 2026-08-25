@@ -24,11 +24,17 @@ if (!sourceIndex) throw new Error('Aucun index Audify trouvé dans /audify');
 let html = await readFile(sourceIndex, 'utf8');
 html = html
   .replace(/\.\/style(?:-v\d+)?\.css(?:\?[^"']*)?/g, './style.css')
-  .replace(/\.\/app\.js(?:\?[^"']*)?/g, './app.js');
+  .replace(/\.\/app\.js(?:\?[^"']*)?/g, './app.js')
+  .replace(/\.\/waves\.js(?:\?[^"']*)?/g, './waves.js');
 
 await writeFile(path.join(www, 'index.html'), html, 'utf8');
 await cp(path.join(audify, 'style.css'), path.join(www, 'style.css'));
 await cp(path.join(audify, 'app.js'), path.join(www, 'app.js'));
+
+try {
+  await access(path.join(audify, 'waves.js'));
+  await cp(path.join(audify, 'waves.js'), path.join(www, 'waves.js'));
+} catch {}
 
 console.log(`Audify Web copié vers ${www}`);
 console.log(`Source HTML: ${path.basename(sourceIndex)}`);
