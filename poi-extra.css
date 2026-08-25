@@ -1,0 +1,23 @@
+.poi .p{background:#17243b}
+.poi.hospital .p,.poi.clinic .p,.poi.doctor .p,.poi.dentist .p,.poi.pharmacy .p,.poi.vet .p{background:#6f2035}
+.poi.police .p,.poi.fire .p,.poi.ambulance .p,.poi.defib .p,.poi.emergency .p{background:#7a2b23}
+.poi.fuel .p,.poi.charging .p,.poi.parking .p,.poi.car-rental .p,.poi.car .p,.poi.bike .p{background:#24486d}
+.poi.bank .p,.poi.atm .p,.poi.post .p,.poi.civic .p,.poi.office .p{background:#4b3c73}
+.poi.school .p,.poi.university .p,.poi.library .p,.poi.books .p{background:#315b69}
+.poi.mosque .p,.poi.church .p,.poi.synagogue .p,.poi.temple .p,.poi.worship .p{background:#5c4a2f}
+.poi.hotel .p,.poi.camp .p{background:#345c4b}
+.poi.museum .p,.poi.gallery .p,.poi.historic .p,.poi.castle .p,.poi.theatre .p{background:#614164}
+.poi.park .p,.poi.beach .p,.poi.playground .p,.poi.golf .p,.poi.marina .p{background:#2f6549}
+.poi.stadium .p,.poi.sport .p,.poi.swim .p{background:#285c73}
+.poi.supermarket .p,.poi.mall .p,.poi.bakery .p,.poi.convenience .p,.poi.hairdresser .p,.poi.fashion .p,.poi.electronics .p,.poi.shop .p,.poi.market .p{background:#704467}
+.poi.restaurant .p,.poi.fastfood .p,.poi.cafe .p,.poi.bar .p{background:#6e4a2f}
+.poi.train .p,.poi.metro .p,.poi.tram .p,.poi.bus .p,.poi.taxi .p,.poi.ferry .p,.poi.airport .p{background:#2d4f78}
+.poi.zoo .p,.poi.themepark .p,.poi.attraction .p,.poi.viewpoint .p,.poi.info .p{background:#466437}
+.poi.craft .p{background:#5b4c3d}
+.poi.toilets .p{background:#3c5362}
+.poi:hover .p,.poi.a .p{animation:novaPoiPulse .48s ease-in-out infinite alternate}
+.poi.train:hover .p,.poi.metro:hover .p,.poi.tram:hover .p,.poi.bus:hover .p,.poi.airport:hover .p,.poi.train.a .p,.poi.metro.a .p,.poi.tram.a .p,.poi.bus.a .p,.poi.airport.a .p{animation:novaPoiMove .55s ease-in-out infinite alternate}
+.poi.emergency:hover .p,.poi.police:hover .p,.poi.fire:hover .p,.poi.ambulance:hover .p,.poi.emergency.a .p,.poi.police.a .p,.poi.fire.a .p,.poi.ambulance.a .p{animation:novaPoiAlert .36s ease-in-out infinite alternate}
+@keyframes novaPoiPulse{to{transform:scale(1.82);filter:brightness(1.25)}}
+@keyframes novaPoiMove{to{transform:scale(1.72) translateY(-3px)}}
+@keyframes novaPoiAlert{to{transform:scale(1.88);filter:brightness(1.4)}}
