@@ -13,9 +13,24 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Check Jina YouTube search fallback
+      - name: Check Piped YouTube search instances
+        shell: bash
         run: |
-          set -x
-          curl -L --fail --max-time 30 'https://r.jina.ai/https://www.youtube.com/results?search_query=niska&hl=fr' -o /tmp/jina.txt
-          head -n 80 /tmp/jina.txt
-          grep -Eo 'watch\?v=[A-Za-z0-9_-]{11}' /tmp/jina.txt | head -n 8
+          set +e
+          for base in \
+            'https://pipedapi.kavin.rocks' \
+            'https://pipedapi.tokhmi.xyz' \
+            'https://pipedapi.moomoo.me' \
+            'https://pipedapi.syncpundit.io' \
+            'https://api-piped.mha.fi' \
+            'https://piped-api.garudalinux.org' \
+            'https://pipedapi.rivo.lol' \
+            'https://pipedapi.leptons.xyz'; do
+            echo "===== $base ====="
+            curl -sS --max-time 12 -D /tmp/headers "$base/search?q=niska&filter=videos" -o /tmp/body
+            code=$?
+            echo "curl=$code"
+            grep -iE 'HTTP/|access-control-allow-origin|content-type' /tmp/headers | tail -n 6 || true
+            head -c 300 /tmp/body || true
+            echo
+          done
