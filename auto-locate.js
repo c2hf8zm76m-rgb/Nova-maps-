@@ -101,11 +101,25 @@
   }
 
   async function init(){
-    for(let i=0;i<30 && !window.NOVA_MAP;i++) await sleep(100);
+    for(let i=0;i<40 && !window.NOVA_MAP;i++) await sleep(100);
     const button=$('loc');
-    if(button) button.onclick=()=>locateRobust(true);
-    await sleep(220);
-    locateRobust(false);
+    if(!button) return;
+
+    // Le bouton reste la source unique de vérité pour la géolocalisation.
+    button.onclick=()=>locateRobust(true);
+
+    // Au lancement, NOVA effectue exactement le même chemin qu'un appui manuel.
+    const autoPress=()=>setTimeout(()=>{
+      if(!running && document.visibilityState!=='hidden') button.click();
+    },450);
+
+    if(document.readyState==='complete') autoPress();
+    else window.addEventListener('load',autoPress,{once:true});
+
+    // Si Safari restaure la page depuis son cache arrière, on relance le même bouton.
+    window.addEventListener('pageshow',e=>{
+      if(e.persisted) setTimeout(()=>{ if(!running) button.click(); },350);
+    });
   }
 
   window.NOVA_LOCATE_ROBUST=locateRobust;
