@@ -5,6 +5,13 @@ const MIRRORS = [
   'https://z.overpass-api.de/api/interpreter'
 ];
 
+const AUDIFY_SEARCH_MIRRORS = [
+  'https://yewtu.be',
+  'https://inv.nadeko.net',
+  'https://invidious.nerdvpn.de',
+  'https://yt.chocolatemoo53.com'
+];
+
 function n(v){ const x=Number(v); return Number.isFinite(x)?x:null; }
 function q4(x, step=0.01){ return Math.round(x/step)*step; }
 function json(data,status=200,extra={}){
@@ -56,6 +63,119 @@ async function overpass(query, deadlineMs=11000){
   throw new Error(last||'Overpass indisponible');
 }
 
+async function fetchTimeout(url, ms=5000, headers={}){
+  const ctl=new AbortController();
+  const timer=setTimeout(()=>ctl.abort(),ms);
+  try{
+    return await fetch(url,{signal:ctl.signal,headers});
+  } finally { clearTimeout(timer); }
+}
+
+function textPart(v){
+  return v?.simpleText || v?.runs?.map(x=>x?.text||'').join('') || '';
+}
+
+function collectVideoRenderers(node,out=[]){
+  if(out.length>=28 || !node || typeof node!=='object') return out;
+  if(Array.isArray(node)){
+    for(const item of node){ collectVideoRenderers(item,out); if(out.length>=28) break; }
+    return out;
+  }
+  if(node.videoRenderer?.videoId) out.push(node.videoRenderer);
+  for(const key in node){
+    if(out.length>=28) break;
+    if(key!=='videoRenderer') collectVideoRenderers(node[key],out);
+  }
+  return out;
+}
+
+function extractJsonObject(text, marker){
+  const p=text.indexOf(marker);
+  if(p<0) return null;
+  let i=text.indexOf('{',p);
+  if(i<0) return null;
+  const start=i;
+  let depth=0, inString=false, escaped=false;
+  for(;i<text.length;i++){
+    const c=text[i];
+    if(inString){
+      if(escaped){escaped=false;continue;}
+      if(c==='\\'){escaped=true;continue;}
+      if(c==='"') inString=false;
+      continue;
+    }
+    if(c==='"'){inString=true;continue;}
+    if(c==='{') depth++;
+    else if(c==='}'){
+      depth--;
+      if(depth===0) return text.slice(start,i+1);
+    }
+  }
+  return null;
+}
+
+function normalizeVideo(id,title,artist){
+  return {
+    id,
+    title:title||'Sans titre',
+    artist:artist||'YouTube',
+    thumbnail:`https://i.ytimg.com/vi/${id}/hqdefault.jpg`
+  };
+}
+
+async function searchInvidiousOne(base,q){
+  const u=`${base}/api/v1/search?q=${encodeURIComponent(q)}&type=video&hl=fr`;
+  const r=await fetchTimeout(u,4800,{'accept':'application/json','user-agent':'Audify/1.0'});
+  if(!r.ok) throw new Error(`${base} HTTP ${r.status}`);
+  const data=await r.json();
+  const items=(Array.isArray(data)?data:[])
+    .filter(x=>x?.videoId)
+    .slice(0,24)
+    .map(x=>normalizeVideo(x.videoId,x.title,x.author));
+  if(!items.length) throw new Error(`${base} sans résultat`);
+  return items;
+}
+
+async function searchInvidious(q){
+  const attempts=AUDIFY_SEARCH_MIRRORS.map(base=>searchInvidiousOne(base,q));
+  if(typeof Promise.any==='function') return await Promise.any(attempts);
+  const settled=await Promise.allSettled(attempts);
+  const ok=settled.find(x=>x.status==='fulfilled');
+  if(ok) return ok.value;
+  throw new Error('Miroirs de recherche indisponibles');
+}
+
+async function searchYoutubeHtml(q){
+  const u=`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&hl=fr&gl=FR`;
+  const r=await fetchTimeout(u,7500,{
+    'accept':'text/html,application/xhtml+xml',
+    'accept-language':'fr-FR,fr;q=0.9,en;q=0.7',
+    'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36'
+  });
+  if(!r.ok) throw new Error(`YouTube HTTP ${r.status}`);
+  const html=await r.text();
+  let raw=extractJsonObject(html,'var ytInitialData =');
+  if(!raw) raw=extractJsonObject(html,'ytInitialData =');
+  if(!raw) raw=extractJsonObject(html,'"ytInitialData":');
+  if(!raw) throw new Error('Réponse YouTube sans données de recherche');
+  const data=JSON.parse(raw);
+  const items=collectVideoRenderers(data,[])
+    .map(v=>normalizeVideo(v.videoId,textPart(v.title),textPart(v.ownerText)||textPart(v.longBylineText)))
+    .filter(x=>x.id)
+    .slice(0,24);
+  if(!items.length) throw new Error('YouTube sans résultat');
+  return items;
+}
+
+async function audifySearch(q){
+  const errors=[];
+  try{return {items:await searchInvidious(q),source:'invidious'};}
+  catch(e){errors.push(String(e?.message||e));}
+  try{return {items:await searchYoutubeHtml(q),source:'youtube-html'};}
+  catch(e){errors.push(String(e?.message||e));}
+  throw new Error(errors.join(' | ')||'Recherche indisponible');
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url=new URL(request.url);
@@ -69,6 +189,24 @@ export default {
         city:cf.city||'',region:cf.region||'',country:cf.country||'',
         timezone:cf.timezone||'',colo:cf.colo||'',source:'cloudflare-network'
       },200,{'cache-control':'private, no-store'});
+    }
+
+    if(url.pathname==='/api/audify-search'){
+      const cors={
+        'access-control-allow-origin':'*',
+        'access-control-allow-methods':'GET,OPTIONS',
+        'access-control-allow-headers':'content-type',
+        'cache-control':'public, max-age=60, s-maxage=180'
+      };
+      if(request.method==='OPTIONS') return new Response(null,{status:204,headers:cors});
+      const q=(url.searchParams.get('q')||'').trim().slice(0,160);
+      if(!q) return json({error:'Recherche vide',items:[]},400,cors);
+      try{
+        const result=await audifySearch(q);
+        return json({ok:true,q,...result},200,cors);
+      }catch(err){
+        return json({ok:false,q,items:[],error:'Recherche temporairement indisponible',detail:String(err?.message||err)},503,cors);
+      }
     }
 
     if(url.pathname!=='/api/pois') return staticResponse(request,env);
