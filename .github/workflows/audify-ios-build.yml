@@ -50,6 +50,7 @@ jobs:
           /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$PLIST" || true
           /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST"
           /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string audio" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Audify" "$PLIST" || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string Audify" "$PLIST"
           node scripts/patch-ios.mjs
           plutil -p "$PLIST" | grep -A4 UIBackgroundModes
 
@@ -65,10 +66,41 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
+      - name: Build unsigned iPhone app
+        working-directory: audify-ios
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build-device \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            build
+
+      - name: Package unsigned IPA
+        working-directory: audify-ios
+        run: |
+          rm -rf Payload Audify-iOS-Unsigned.ipa
+          mkdir -p Payload
+          cp -R build-device/Build/Products/Release-iphoneos/App.app Payload/Audify.app
+          zip -qry Audify-iOS-Unsigned.ipa Payload
+          ls -lh Audify-iOS-Unsigned.ipa
+
       - name: Package Xcode project
         working-directory: audify-ios
         run: |
           ditto -c -k --sequesterRsrc --keepParent ios Audify-iOS-Xcode.zip
+
+      - name: Upload unsigned iPhone IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Audify-iOS-Unsigned-IPA
+          path: audify-ios/Audify-iOS-Unsigned.ipa
+          retention-days: 14
 
       - name: Upload Xcode project
         uses: actions/upload-artifact@v4
