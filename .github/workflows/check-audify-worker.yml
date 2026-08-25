@@ -1,41 +1,14 @@
 name: Check Audify Search
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'audify/**'
-      - '.github/workflows/check-audify-worker.yml'
   workflow_dispatch:
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Check current Piped search instances
-        shell: bash
+      - name: Check Audify Piped search
         run: |
-          set +e
-          for base in \
-            'https://pipedapi.nosebs.ru' \
-            'https://pipedapi-libre.kavin.rocks' \
-            'https://piped-api.privacy.com.de' \
-            'https://pipedapi.adminforge.de' \
-            'https://api.piped.yt' \
-            'https://pipedapi.drgns.space' \
-            'https://pipedapi.owo.si' \
-            'https://pipedapi.ducks.party' \
-            'https://piped-api.codespace.cz' \
-            'https://pipedapi.reallyaweso.me' \
-            'https://api.piped.private.coffee' \
-            'https://pipedapi.darkness.services' \
-            'https://pipedapi.orangenet.cc'; do
-            echo "===== $base ====="
-            rm -f /tmp/headers /tmp/body
-            curl -sS --max-time 7 -D /tmp/headers "$base/search?q=niska&filter=videos" -o /tmp/body
-            code=$?
-            echo "curl=$code"
-            test -f /tmp/headers && grep -iE 'HTTP/|access-control-allow-origin|content-type' /tmp/headers | tail -n 7 || true
-            test -f /tmp/body && head -c 220 /tmp/body || true
-            echo
-          done
+          curl -sS --fail --max-time 15 \
+            'https://api.piped.private.coffee/search?q=niska&filter=videos' \
+            | head -c 1000
