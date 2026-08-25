@@ -13,7 +13,9 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Check Audify search endpoint
+      - name: Check Jina YouTube search fallback
         run: |
           set -x
-          curl -i --fail --max-time 25 'https://weathered-truth-74c7.ten-dart.workers.dev/api/audify-search?q=niska'
+          curl -L --fail --max-time 30 'https://r.jina.ai/https://www.youtube.com/results?search_query=niska&hl=fr' -o /tmp/jina.txt
+          head -n 80 /tmp/jina.txt
+          grep -Eo 'watch\?v=[A-Za-z0-9_-]{11}' /tmp/jina.txt | head -n 8
