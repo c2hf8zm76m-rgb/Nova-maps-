@@ -9,6 +9,10 @@ on:
       - '.github/workflows/audify-ios-build.yml'
   workflow_dispatch:
 
+concurrency:
+  group: audify-ios-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-ios:
     runs-on: macos-latest
