@@ -1,16 +1,18 @@
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 const S={player:null,ready:false,current:null,results:[],index:-1};
-const AUDIFY_SEARCH_API='https://weathered-truth-74c7.ten-dart.workers.dev/api/audify-search';
+
+// Moteur principal vérifié le 25/08/2026 : HTTP 200 + JSON + CORS *.
+const PIPED_APIS=['https://api.piped.private.coffee'];
 const SEARCH_INSTANCES=['https://yewtu.be','https://inv.nadeko.net','https://invidious.nerdvpn.de','https://yt.chocolatemoo53.com'];
 const SEARCH_WRAPPERS=[
   {name:'allorigins',wrap:u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`},
-  {name:'corsproxy',wrap:u=>`https://corsproxy.io/?${encodeURIComponent(u)}`},
+  {name:'corsproxy',wrap:u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}`},
   {name:'direct',wrap:u=>u}
 ];
 
 const fmt=n=>{n=Math.max(0,Math.floor(n||0));return Math.floor(n/60)+':'+String(n%60).padStart(2,'0')};
-const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),1600)};
 const videoIdFrom=v=>{const m=String(v).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([\w-]{11})/);return m?.[1]||(/^[\w-]{11}$/.test(String(v))?String(v):null)};
 const textFrom=t=>t?.simpleText||t?.runs?.map(r=>r.text).join('')||'';
@@ -58,17 +60,37 @@ async function fetchText(url,timeout=6500){
   }finally{clearTimeout(timer)}
 }
 
-async function searchViaBackend(q){
-  const raw=await fetchText(`${AUDIFY_SEARCH_API}?q=${encodeURIComponent(q)}`,9000);
-  const data=JSON.parse(raw);
-  const items=Array.isArray(data?.items)?data.items:[];
-  if(!items.length) throw new Error(data?.error||'Backend sans résultat');
-  return items.slice(0,20).map(x=>({
-    id:x.id,
-    title:x.title||'Sans titre',
-    artist:x.artist||'YouTube',
-    thumbnail:x.thumbnail||`https://i.ytimg.com/vi/${x.id}/hqdefault.jpg`
-  })).filter(x=>x.id);
+function pipedVideoId(item){
+  if(item?.videoId&&/^[\w-]{11}$/.test(item.videoId)) return item.videoId;
+  const m=String(item?.url||'').match(/[?&]v=([A-Za-z0-9_-]{11})/);
+  return m?.[1]||null;
+}
+
+async function searchViaPiped(q){
+  let last='';
+  for(const base of PIPED_APIS){
+    try{
+      const raw=await fetchText(`${base}/search?q=${encodeURIComponent(q)}&filter=videos`,8000);
+      const data=JSON.parse(raw);
+      const source=Array.isArray(data?.items)?data.items:[];
+      const items=source
+        .filter(x=>!x?.type||x.type==='stream'||x.type==='video')
+        .map(x=>{
+          const id=pipedVideoId(x);
+          return id?{
+            id,
+            title:x.title||'Sans titre',
+            artist:x.uploaderName||x.uploader||x.author||x.channelName||'YouTube',
+            thumbnail:`https://i.ytimg.com/vi/${id}/hqdefault.jpg`
+          }:null;
+        })
+        .filter(Boolean)
+        .slice(0,20);
+      if(items.length)return items;
+      last='Piped n’a renvoyé aucune vidéo';
+    }catch(e){last=e?.message||String(e)}
+  }
+  throw new Error(last||'Piped indisponible');
 }
 
 async function searchViaInvidious(q){
@@ -77,22 +99,22 @@ async function searchViaInvidious(q){
     const target=`${instance}/api/v1/search?q=${encodeURIComponent(q)}&type=video&hl=fr`;
     for(const wrapper of SEARCH_WRAPPERS){
       try{
-        const raw=await fetchText(wrapper.wrap(target),6000);
+        const raw=await fetchText(wrapper.wrap(target),5500);
         const data=JSON.parse(raw);
         const items=(Array.isArray(data)?data:[])
-          .filter(x=>x && x.videoId)
+          .filter(x=>x&&x.videoId)
           .slice(0,20)
           .map(x=>({id:x.videoId,title:x.title||'Sans titre',artist:x.author||'YouTube',thumbnail:`https://i.ytimg.com/vi/${x.videoId}/hqdefault.jpg`}));
-        if(items.length) return items;
+        if(items.length)return items;
         last=`Aucun résultat via ${wrapper.name}`;
       }catch(e){last=`${wrapper.name}: ${e?.message||'erreur'}`}
     }
   }
-  throw new Error(last||'Échec Invidious');
+  throw new Error(last||'Échec du moteur de secours');
 }
 
 function collectVideoRenderers(node,out=[]){
-  if(!node||typeof node!=='object') return out;
+  if(!node||typeof node!=='object')return out;
   if(Array.isArray(node)){for(const v of node)collectVideoRenderers(v,out);return out}
   if(node.videoRenderer)out.push(node.videoRenderer);
   for(const k in node)collectVideoRenderers(node[k],out);
@@ -103,11 +125,11 @@ async function searchViaYoutubeHtml(q){
   const target=`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&hl=fr`;
   let html='',last='';
   for(const wrapper of SEARCH_WRAPPERS){
-    try{html=await fetchText(wrapper.wrap(target),7000);if(html&&/ytInitialData|videoRenderer/.test(html))break}catch(e){last=`${wrapper.name}: ${e?.message||'erreur'}`}
+    try{html=await fetchText(wrapper.wrap(target),6500);if(html&&/ytInitialData|videoRenderer/.test(html))break}catch(e){last=`${wrapper.name}: ${e?.message||'erreur'}`}
   }
   if(!html)throw new Error(last||'Impossible de récupérer YouTube');
   const m=html.match(/var ytInitialData = (\{.*?\});<\/script>/s)||html.match(/"ytInitialData"\s*[:=]\s*(\{.*?\})\s*;?<\/script>/s);
-  if(!m)throw new Error('ytInitialData introuvable');
+  if(!m)throw new Error('Données YouTube introuvables');
   let data;try{data=JSON.parse(m[1])}catch{throw new Error('Données YouTube illisibles')}
   const items=collectVideoRenderers(data,[]).slice(0,20).map(v=>({id:v.videoId,title:textFrom(v.title)||'Sans titre',artist:textFrom(v.ownerText)||textFrom(v.longBylineText)||'YouTube',thumbnail:`https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`})).filter(x=>x.id);
   if(items.length)return items;
@@ -119,7 +141,8 @@ async function search(){
   const r=$('#results');$('#resultsView').hidden=false;$('#nowPlaying').hidden=true;r.className='empty';r.innerHTML='Recherche…';
   const direct=videoIdFrom(q);
   if(direct){renderResults([{id:direct,title:'Vidéo YouTube',artist:'YouTube',thumbnail:`https://i.ytimg.com/vi/${direct}/hqdefault.jpg`}]);return}
-  const methods=[searchViaBackend,searchViaInvidious,searchViaYoutubeHtml];
+
+  const methods=[searchViaPiped,searchViaInvidious,searchViaYoutubeHtml];
   let last='';
   for(const method of methods){
     try{const items=await method(q);if(items?.length){renderResults(items);return}}catch(e){last=e?.message||String(e)}
