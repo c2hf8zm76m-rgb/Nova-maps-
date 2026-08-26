@@ -1,0 +1,20 @@
+/* Audify V18 — pochette légèrement plus compacte + titre piloté par JS */
+.artwork-stage{width:min(520px,72vw);height:min(410px,54vw)}
+.cover{width:min(330px,40vw);height:min(330px,40vw)}
+.vinyl{width:min(365px,43vw);height:min(365px,43vw)}
+.track-copy{max-width:min(900px,90vw)}
+.track-copy h1{font-size:var(--smart-title-size,clamp(30px,4.5vw,58px));max-width:100%;margin-left:auto;margin-right:auto;overflow-wrap:normal;word-break:normal;text-wrap:balance}
+
+@media(max-width:760px){
+  .artwork-stage{margin-top:24px;width:90vw;height:68vw}
+  .cover{width:56vw;height:56vw}
+  .vinyl{width:56vw;height:56vw}
+  .track-copy{width:92vw;max-width:92vw}
+  .track-copy h1{line-height:1.04;padding:0 5px}
+}
+
+@media(max-width:430px){
+  .artwork-stage{width:90vw;height:66vw}
+  .cover{width:55vw;height:55vw;border-radius:21px}
+  .vinyl{width:55vw;height:55vw}
+}
