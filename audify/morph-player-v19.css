@@ -1,0 +1,211 @@
+/* Audify V19 — Morph premium doux, épuré et verre */
+
+/* Harmonise tout le langage visuel avec la barre de recherche */
+.compact-player{
+  position:relative;
+  overflow:hidden;
+  width:min(820px,92vw);
+  min-height:74px;
+  margin-top:30px;
+  padding:12px 14px;
+  display:grid;
+  grid-template-columns:44px 58px 44px minmax(0,1fr) 142px 22px 96px;
+  align-items:center;
+  gap:10px;
+  border-radius:30px;
+  border:1px solid rgba(255,255,255,.16);
+  background:linear-gradient(135deg,rgba(255,255,255,.115),rgba(255,255,255,.045));
+  box-shadow:
+    0 24px 72px rgba(0,0,0,.34),
+    0 8px 28px rgba(0,0,0,.18),
+    inset 0 1px 0 rgba(255,255,255,.16),
+    inset 0 -1px 0 rgba(255,255,255,.025);
+  backdrop-filter:blur(30px) saturate(155%);
+  -webkit-backdrop-filter:blur(30px) saturate(155%);
+}
+.compact-player:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  border-radius:inherit;
+  background:
+    radial-gradient(circle at 18% 0%,rgba(255,255,255,.11),transparent 28%),
+    linear-gradient(110deg,rgba(255,255,255,.09),transparent 30%,transparent 68%,rgba(168,255,63,.035));
+}
+.compact-player:after{
+  content:"";
+  position:absolute;
+  left:9%;right:9%;top:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);
+  opacity:.48;
+  pointer-events:none;
+}
+
+.icon-btn,
+.play-btn,
+.video-btn,
+.timeline,
+.volume,
+.volume-icon{
+  position:relative;
+  z-index:2;
+}
+
+.icon-btn{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:50%;
+  background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.02));
+  color:rgba(255,255,255,.9);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+  transition:transform .2s ease,background .2s ease,border-color .2s ease;
+}
+.icon-btn:hover{
+  transform:translateY(-1px);
+  background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.035));
+  border-color:rgba(255,255,255,.16);
+}
+
+.play-btn{
+  width:56px;
+  height:56px;
+  padding:0;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.7);
+  background:linear-gradient(145deg,rgba(255,255,255,.99),rgba(231,238,246,.9));
+  color:#071006;
+  font-size:17px;
+  font-weight:950;
+  box-shadow:
+    0 12px 30px rgba(0,0,0,.22),
+    0 0 28px rgba(255,255,255,.08),
+    inset 0 1px 0 rgba(255,255,255,.95);
+  transition:transform .2s ease,box-shadow .2s ease;
+}
+.play-btn:hover{
+  transform:scale(1.035);
+  box-shadow:0 15px 34px rgba(0,0,0,.27),0 0 34px rgba(168,255,63,.08),inset 0 1px 0 rgba(255,255,255,1);
+}
+
+.timeline{
+  min-width:0;
+  height:48px;
+  padding:0 13px;
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr) 38px;
+  gap:8px;
+  align-items:center;
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,.09);
+  background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 -1px 0 rgba(0,0,0,.12);
+}
+.timeline span{
+  font-size:11px;
+  color:rgba(239,244,251,.72);
+  font-variant-numeric:tabular-nums;
+}
+.timeline input{
+  width:100%;
+  min-width:0;
+  accent-color:var(--accent);
+  cursor:pointer;
+}
+
+.video-btn{
+  height:48px;
+  padding:0 16px;
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,.1);
+  background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.025));
+  color:rgba(248,250,255,.94);
+  font-weight:750;
+  letter-spacing:.01em;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+  transition:transform .2s ease,background .2s ease,border-color .2s ease;
+}
+.video-btn:hover{
+  transform:translateY(-1px);
+  border-color:rgba(255,255,255,.17);
+  background:linear-gradient(145deg,rgba(255,255,255,.115),rgba(255,255,255,.035));
+}
+
+.volume-icon{
+  opacity:.72;
+  font-size:13px;
+  text-align:center;
+}
+.volume{
+  width:96px;
+  accent-color:var(--accent);
+  cursor:pointer;
+}
+
+/* Le bloc vidéo reprend lui aussi la matière verre Audify */
+.video-panel{
+  border:1px solid rgba(255,255,255,.14) !important;
+  background:linear-gradient(145deg,rgba(18,23,31,.88),rgba(8,11,16,.84)) !important;
+  box-shadow:0 26px 72px rgba(0,0,0,.46),inset 0 1px 0 rgba(255,255,255,.08) !important;
+  backdrop-filter:blur(24px) saturate(140%);
+  -webkit-backdrop-filter:blur(24px) saturate(140%);
+}
+.video-head{
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018));
+}
+
+/* Transition légère pour donner une impression de matière vivante */
+.compact-player,
+.video-panel{
+  transition:border-color .28s ease,box-shadow .28s ease,background .28s ease;
+}
+.playing .compact-player{
+  border-color:rgba(255,255,255,.2);
+  box-shadow:
+    0 26px 78px rgba(0,0,0,.36),
+    0 8px 30px rgba(0,0,0,.18),
+    0 0 48px rgba(168,255,63,.025),
+    inset 0 1px 0 rgba(255,255,255,.18);
+}
+
+@media(max-width:760px){
+  .compact-player{
+    width:calc(100vw - 18px);
+    min-height:0;
+    margin-top:24px;
+    padding:12px;
+    grid-template-columns:44px 58px 44px minmax(0,1fr) 1fr;
+    grid-template-rows:58px 48px;
+    gap:10px;
+    border-radius:28px;
+  }
+  .icon-btn{width:42px;height:42px}
+  .play-btn{width:56px;height:56px}
+  .video-btn{height:48px;min-width:0}
+  .timeline{
+    grid-column:1/-1;
+    grid-row:2;
+    height:48px;
+    border-radius:18px;
+  }
+  .volume,.volume-icon{display:none}
+}
+
+@media(max-width:430px){
+  .compact-player{
+    grid-template-columns:40px 54px 40px minmax(0,1fr) 1fr;
+    padding:10px;
+    gap:8px;
+    border-radius:26px;
+  }
+  .icon-btn{width:38px;height:38px}
+  .play-btn{width:52px;height:52px}
+  .video-btn{padding:0 11px;font-size:13px}
+  .timeline{grid-template-columns:34px minmax(0,1fr) 34px;padding:0 11px}
+}
