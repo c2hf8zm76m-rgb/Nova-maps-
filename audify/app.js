@@ -4,7 +4,7 @@ const KEY='AIzaSyDY2Lz5pnOkpwYuMN03DbkYtU4XJTACcJQ';
 const S={player:null,ready:false,current:null,results:[],index:-1};
 
 const fmt=n=>{n=Math.max(0,Math.floor(n||0));return Math.floor(n/60)+':'+String(n%60).padStart(2,'0')};
-const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));
 const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),1600)};
 const videoIdFrom=v=>{const m=String(v).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([\w-]{11})/);return m?.[1]||(/^[\w-]{11}$/.test(String(v))?String(v):null)};
 
@@ -74,7 +74,7 @@ function playTrack(t,index=-1){
   $('#vinylLabel').style.backgroundImage=`url("${String(t.thumbnail).replace(/"/g,'')}")`;
   setAmbient(t.thumbnail,t.id||t.title);
   const stage=$('#artworkStage');stage.style.animation='none';void stage.offsetWidth;stage.style.animation='';
-  $('#videoPanel').classList.add('show');
+  $('#videoPanel').classList.add('show');$('#videoPanel').classList.remove('mini');
   const load=()=>S.ready?S.player.loadVideoById(t.id):setTimeout(load,100);load();
 }
 
@@ -90,11 +90,19 @@ function setAmbient(url,seed){
 }
 function applyAmbient(c){document.documentElement.style.setProperty('--ambient',c);document.documentElement.style.setProperty('--ambient2',lighter(c))}
 
+function collapseVideo(){
+  const panel=$('#videoPanel');
+  const playing=S.ready&&S.player.getPlayerState()===YT.PlayerState.PLAYING;
+  if(playing){panel.classList.add('show','mini');return}
+  panel.classList.remove('show','mini');
+}
+function expandVideo(){const panel=$('#videoPanel');panel.classList.add('show');panel.classList.remove('mini')}
+
 $('#go').onclick=search;
 $('#q').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();search()}};
 $('#play').onclick=()=>{if(!S.current)return toast('Choisis une musique');S.player.getPlayerState()===YT.PlayerState.PLAYING?S.player.pauseVideo():S.player.playVideo()};
 $('#prev').onclick=prevTrack;$('#next').onclick=nextTrack;
 $('#progress').oninput=e=>{if(S.ready)S.player.seekTo((S.player.getDuration()||0)*(+e.target.value/1000),true)};
 $('#volume').oninput=e=>S.ready&&S.player.setVolume(+e.target.value);
-$('#showVideo').onclick=()=>$('#videoPanel').classList.add('show');
-$('#closeVideo').onclick=()=>{if(S.ready&&S.player.getPlayerState()===YT.PlayerState.PLAYING)return toast('Mets en pause avant de masquer la vidéo');$('#videoPanel').classList.remove('show')};
+$('#showVideo').onclick=()=>{const p=$('#videoPanel');p.classList.contains('show')&&!p.classList.contains('mini')?collapseVideo():expandVideo()};
+$('#closeVideo').onclick=collapseVideo;
