@@ -1,0 +1,44 @@
+/* Audify V25 — centrage Home/Playlist + animation retour ajout */
+.home-floating,.playlist-floating{
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+  align-items:center!important;
+  justify-items:center!important;
+  line-height:0!important;
+  font-size:0!important;
+  overflow:visible!important;
+}
+.home-floating svg,.playlist-floating svg{
+  display:block!important;
+  width:22px!important;
+  height:22px!important;
+  margin:0!important;
+  transform:none!important;
+  pointer-events:none!important;
+}
+.playlist-floating{position:absolute!important}
+.playlist-floating.v25-press{animation:v25PlaylistPress .32s cubic-bezier(.2,.9,.25,1.18)}
+.playlist-floating.v25-success{
+  color:#081006!important;
+  border-color:rgba(168,255,63,.48)!important;
+  background:linear-gradient(135deg,var(--accent),var(--accent2))!important;
+  box-shadow:0 0 0 1px rgba(168,255,63,.2),0 0 32px rgba(168,255,63,.35),0 16px 42px rgba(0,0,0,.24)!important;
+  animation:v25PlaylistSuccess .7s cubic-bezier(.2,.9,.25,1.16)!important;
+}
+.playlist-floating.v25-success::after{
+  content:"";
+  position:absolute;
+  inset:-8px;
+  border:2px solid rgba(168,255,63,.55);
+  border-radius:20px;
+  pointer-events:none;
+  animation:v25PlaylistRing .72s ease-out forwards;
+}
+@keyframes v25PlaylistPress{0%{transform:scale(1)}42%{transform:scale(.86)}100%{transform:scale(1)}}
+@keyframes v25PlaylistSuccess{0%{transform:scale(1)}25%{transform:scale(1.18)}55%{transform:scale(.94)}100%{transform:scale(1)}}
+@keyframes v25PlaylistRing{0%{opacity:.8;transform:scale(.72)}100%{opacity:0;transform:scale(1.35)}}
+@media(max-width:760px){
+  .home-floating svg,.playlist-floating svg{width:20px!important;height:20px!important}
+  .playlist-floating.v25-success::after{border-radius:18px}
+}
