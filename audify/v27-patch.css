@@ -1,0 +1,30 @@
+/* Audify V27 — nouvelle disposition des contrôles */
+.v27-top-tools{position:absolute;z-index:13;top:96px;left:18px;display:flex;align-items:center;gap:10px}
+.v27-top-tools #homeFloating,.v27-top-tools #playlistFloating,.v27-top-tools #likeBtn{position:relative!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;margin:0!important;transform:none!important;width:46px!important;height:46px!important;min-width:46px!important;padding:0!important;border-radius:16px!important;display:grid!important;place-items:center!important}
+.v27-top-tools #likeBtn{border:1px solid rgba(255,255,255,.14)!important;background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.04))!important;box-shadow:0 16px 42px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.1)!important;backdrop-filter:blur(24px) saturate(155%);-webkit-backdrop-filter:blur(24px) saturate(155%);font-size:22px!important;color:#fff!important}
+.v27-top-tools #likeBtn.on{color:#ff4f72!important;border-color:rgba(255,93,124,.34)!important;box-shadow:0 0 0 1px rgba(255,93,124,.12),0 14px 34px rgba(255,79,114,.18),inset 0 1px 0 rgba(255,255,255,.08)!important}
+.v27-stage-row{position:relative;z-index:4;width:min(760px,96vw);display:grid;grid-template-columns:58px minmax(0,1fr) 58px;align-items:center;justify-items:center;gap:10px;margin-top:18px}
+.v27-stage-row .stage{margin-top:0!important;width:min(600px,78vw)!important}
+.v27-cover-nav{width:56px;height:56px;border:1px solid rgba(255,255,255,.12)!important;border-radius:20px!important;background:linear-gradient(145deg,rgba(255,255,255,.11),rgba(255,255,255,.035))!important;color:#f5f7fb!important;display:grid!important;place-items:center!important;padding:0!important;font-size:28px!important;line-height:1!important;box-shadow:0 18px 44px rgba(0,0,0,.26),inset 0 1px 0 rgba(255,255,255,.08)!important;backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease!important}
+.v27-cover-nav:active{transform:scale(.9)!important;border-color:rgba(168,255,63,.3)!important;box-shadow:0 10px 26px rgba(0,0,0,.2),0 0 0 1px rgba(168,255,63,.12)!important}
+.player.v27-clean-player{width:min(610px,86vw)!important;grid-template-columns:auto 1fr auto!important;padding:9px 10px!important;gap:9px!important}
+.player.v27-clean-player .well{padding:5px 7px!important}
+.player.v27-clean-player .play-btn{width:48px!important;height:48px!important}
+.player.v27-clean-player .actions{justify-self:end!important}
+.player.v27-clean-player .timeline{min-width:0!important}
+@media(max-width:760px){
+ .v27-top-tools{top:82px;left:12px;gap:9px}
+ .v27-top-tools #homeFloating,.v27-top-tools #playlistFloating,.v27-top-tools #likeBtn{width:42px!important;height:42px!important;min-width:42px!important;border-radius:14px!important}
+ .v27-stage-row{width:100%;grid-template-columns:46px minmax(0,1fr) 46px;gap:4px;margin-top:28px}
+ .v27-stage-row .stage{width:78vw!important;height:62vw!important}
+ .v27-cover-nav{width:44px!important;height:54px!important;border-radius:17px!important;font-size:25px!important}
+ .player.v27-clean-player{width:calc(100vw - 44px)!important;grid-template-columns:auto 1fr!important;gap:8px!important;padding:8px!important}
+ .player.v27-clean-player .cluster{justify-content:flex-start!important}
+ .player.v27-clean-player .actions{justify-content:flex-end!important}
+ .player.v27-clean-player .timeline{grid-column:1/-1!important}
+}
+@media(max-width:430px){
+ .v27-stage-row{grid-template-columns:42px minmax(0,1fr) 42px;gap:2px}
+ .v27-stage-row .stage{width:76vw!important;height:60vw!important}
+ .v27-cover-nav{width:40px!important;height:50px!important}
+}
