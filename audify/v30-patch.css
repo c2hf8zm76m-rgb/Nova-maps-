@@ -1,0 +1,15 @@
+/* Audify V30 — swipe confirmé au relâchement */
+.v27-stage-row .stage{--v30-x:0px;transform:translate3d(var(--v30-x),0,0);transform-origin:50% 55%;}
+.v27-stage-row .stage.v30-dragging{transition:none!important;will-change:transform,opacity;}
+.v27-stage-row.v30-armed-left::before,.v27-stage-row.v30-armed-right::after{content:"Relâche"!important;position:absolute;top:50%;transform:translateY(-50%);z-index:10;padding:8px 11px;border-radius:999px;border:1px solid rgba(168,255,63,.3);background:linear-gradient(135deg,rgba(168,255,63,.18),rgba(168,255,63,.06));color:#d8ffae;font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 10px 28px rgba(168,255,63,.1);pointer-events:none;animation:v30Ready .5s ease both;}
+.v27-stage-row.v30-armed-left::before{left:10px}.v27-stage-row.v30-armed-right::after{right:10px}
+.v27-stage-row .stage.v30-commit-left{transition:transform .2s cubic-bezier(.3,.7,.2,1),opacity .2s ease,filter .2s ease!important;transform:translate3d(-72%,0,0) rotate(-3deg)!important;opacity:0;filter:blur(1.5px)}
+.v27-stage-row .stage.v30-commit-right{transition:transform .2s cubic-bezier(.3,.7,.2,1),opacity .2s ease,filter .2s ease!important;transform:translate3d(72%,0,0) rotate(3deg)!important;opacity:0;filter:blur(1.5px)}
+.v27-stage-row .stage.v30-enter-left{animation:v30EnterLeft .34s cubic-bezier(.18,.82,.22,1) both}
+.v27-stage-row .stage.v30-enter-right{animation:v30EnterRight .34s cubic-bezier(.18,.82,.22,1) both}
+.v27-stage-row .stage.v30-return{transition:transform .25s cubic-bezier(.2,.8,.2,1),opacity .25s ease!important;transform:translate3d(0,0,0)!important;opacity:1!important}
+@keyframes v30Ready{0%{opacity:0;transform:translateY(-50%) scale(.86)}100%{opacity:1;transform:translateY(-50%) scale(1)}}
+@keyframes v30EnterLeft{0%{transform:translate3d(18%,0,0) scale(.96);opacity:.15}100%{transform:translate3d(0,0,0) scale(1);opacity:1}}
+@keyframes v30EnterRight{0%{transform:translate3d(-18%,0,0) scale(.96);opacity:.15}100%{transform:translate3d(0,0,0) scale(1);opacity:1}}
+@media(max-width:760px){.v27-stage-row.v30-armed-left::before,.v27-stage-row.v30-armed-right::after{font-size:9px;padding:6px 8px}.v27-stage-row.v30-armed-left::before{left:2px}.v27-stage-row.v30-armed-right::after{right:2px}}
+@media(prefers-reduced-motion:reduce){.v27-stage-row .stage.v30-commit-left,.v27-stage-row .stage.v30-commit-right,.v27-stage-row .stage.v30-return{transition:none!important}.v27-stage-row .stage.v30-enter-left,.v27-stage-row .stage.v30-enter-right{animation:none!important}}
