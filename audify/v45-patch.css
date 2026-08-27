@@ -1,0 +1,16 @@
+/* Audify V45 — Home Mini Player */
+#v45MiniPlayer{position:fixed;left:50%;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%) translateY(18px) scale(.98);z-index:72;width:min(560px,calc(100vw - 22px));min-height:64px;padding:8px 10px;border-radius:22px;border:1px solid rgba(255,255,255,.13);background:linear-gradient(135deg,rgba(24,30,38,.68),rgba(9,13,19,.52));box-shadow:0 18px 54px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.09);backdrop-filter:blur(26px) saturate(155%);-webkit-backdrop-filter:blur(26px) saturate(155%);display:grid;grid-template-columns:46px minmax(0,1fr) 42px;gap:9px;align-items:center;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .22s ease,transform .28s cubic-bezier(.2,.86,.25,1),visibility .22s ease;overflow:hidden}
+#v45MiniPlayer::before{content:"";position:absolute;inset:-90% 35% -90% -20%;background:radial-gradient(circle,var(--ambient2),transparent 56%);opacity:.13;filter:blur(18px);pointer-events:none}
+#v45MiniPlayer.v45-show{opacity:1;visibility:visible;pointer-events:auto;transform:translateX(-50%) translateY(0) scale(1)}
+.v45-mini-btn{position:relative;z-index:2;border:1px solid rgba(255,255,255,.09);background:linear-gradient(140deg,rgba(255,255,255,.08),rgba(255,255,255,.025));color:#fff;display:grid;place-items:center;transition:transform .16s ease,background .18s ease,box-shadow .18s ease}
+.v45-mini-btn:active{transform:scale(.93)}
+#v45MiniPlay{width:46px;height:46px;border-radius:50%;font-size:18px;font-weight:900;background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(232,238,246,.9));color:#070b10;box-shadow:0 7px 20px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.8)}
+#v45MiniLoop{width:42px;height:42px;border-radius:14px;padding:0}
+#v45MiniLoop svg{width:20px;height:20px;display:block}
+#v45MiniLoop.active{color:#071006;background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:rgba(168,255,63,.4);box-shadow:0 0 22px rgba(168,255,63,.18),inset 0 1px 0 rgba(255,255,255,.3)}
+.v45-mini-track{position:relative;z-index:2;min-width:0;display:flex;align-items:center;padding:0 4px;height:46px;cursor:pointer}
+#v45MiniProgress{width:100%;height:28px;margin:0;accent-color:var(--accent);touch-action:pan-x}
+body.v45-mini-visible #resultsView{padding-bottom:max(100px,calc(86px + env(safe-area-inset-bottom)))!important}
+@media(max-width:760px){#v45MiniPlayer{width:calc(100vw - 18px);min-height:60px;padding:7px 8px;border-radius:19px;grid-template-columns:42px minmax(0,1fr) 39px;gap:7px}#v45MiniPlay{width:42px;height:42px;font-size:16px}#v45MiniLoop{width:39px;height:39px;border-radius:13px}#v45MiniLoop svg{width:19px;height:19px}.v45-mini-track{height:42px;padding:0 2px}}
+@media(max-height:680px) and (max-width:760px){#v45MiniPlayer{min-height:56px;padding:6px 7px}#v45MiniPlay{width:40px;height:40px}#v45MiniLoop{width:38px;height:38px}.v45-mini-track{height:40px}}
+@media(prefers-reduced-motion:reduce){#v45MiniPlayer,.v45-mini-btn{transition:none!important}}
