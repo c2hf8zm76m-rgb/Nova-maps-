@@ -1,0 +1,13 @@
+/* Audify V29 — Swipe signature */
+.v27-stage-row .stage{touch-action:pan-y;cursor:grab;will-change:transform,opacity;transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .22s ease,filter .22s ease}
+.v27-stage-row .stage.v29-dragging{cursor:grabbing;transition:none;filter:saturate(1.03)}
+.v27-stage-row .stage.v29-swipe-left{transform:translate3d(-34%,0,0) rotate(-2.8deg)!important;opacity:0;filter:blur(1px)}
+.v27-stage-row .stage.v29-swipe-right{transform:translate3d(34%,0,0) rotate(2.8deg)!important;opacity:0;filter:blur(1px)}
+.v27-stage-row.v29-hint-left::before,.v27-stage-row.v29-hint-right::after{position:absolute;top:50%;transform:translateY(-50%);z-index:8;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.72);padding:7px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.09);background:rgba(7,10,15,.2);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);pointer-events:none;opacity:.92}
+.v27-stage-row.v29-hint-left::before{content:"Précédent";left:12px}
+.v27-stage-row.v29-hint-right::after{content:"Suivant";right:12px}
+@media(max-width:760px){
+ .v27-stage-row.v29-hint-left::before,.v27-stage-row.v29-hint-right::after{font-size:10px;padding:6px 8px}
+ .v27-stage-row.v29-hint-left::before{left:2px}.v27-stage-row.v29-hint-right::after{right:2px}
+}
+@media(prefers-reduced-motion:reduce){.v27-stage-row .stage{transition:none}.v27-stage-row .stage.v29-swipe-left,.v27-stage-row .stage.v29-swipe-right{filter:none}}
