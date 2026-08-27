@@ -1,0 +1,7 @@
+/* Audify V39 — Phrase Karaoke */
+.v38-line{color:rgba(255,255,255,.24)!important;opacity:.42!important;transform:scale(.97)!important;transition:opacity .22s ease,transform .26s ease,color .22s ease!important}
+.v38-line.active{color:#fff!important;opacity:1!important;transform:scale(1)!important;text-shadow:0 10px 30px rgba(0,0,0,.22)}
+.v38-line.past{color:rgba(255,255,255,.42)!important;opacity:.48!important}
+.v38-line.next{color:rgba(255,255,255,.34)!important;opacity:.62!important}
+.v38-line .v38-word{background:none!important;color:inherit!important;-webkit-text-fill-color:currentColor!important}
+@media(max-width:760px){.v38-line{font-size:clamp(25px,8.2vw,38px)!important;line-height:1.08!important}}
