@@ -1,0 +1,8 @@
+/* Audify V40 — Karaoke Sync Calibration */
+.v40-sync{display:flex;align-items:center;gap:6px;margin-left:auto;margin-right:8px;padding:4px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.035)}
+.v40-sync button{width:32px;height:32px;border:0;border-radius:9px;background:rgba(255,255,255,.07);color:#fff;font-weight:900;font-size:15px;display:grid;place-items:center}
+.v40-sync button:active{transform:scale(.94)}
+.v40-sync-value{min-width:54px;text-align:center;font-size:10px;font-weight:800;color:rgba(255,255,255,.68);font-variant-numeric:tabular-nums}
+.v40-sync-value.auto{color:rgba(168,255,63,.86)}
+.v40-reset{font-size:12px!important;color:rgba(255,255,255,.72)!important}
+@media(max-width:760px){.v38-head{gap:7px!important}.v40-sync{gap:3px;margin-right:2px;padding:3px}.v40-sync button{width:29px;height:29px;border-radius:8px;font-size:13px}.v40-sync-value{min-width:43px;font-size:9px}.v38-head>div:first-child{min-width:0;flex:1}.v38-head>div:first-child span{max-width:36vw!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
