@@ -1,0 +1,13 @@
+/* Audify V46 — Mini Player artwork + title */
+#v45MiniPlayer{grid-template-columns:54px minmax(0,1fr) 44px 42px!important;grid-template-rows:auto auto!important;column-gap:9px!important;row-gap:5px!important;min-height:78px!important;padding:8px 10px 7px!important}
+.v46-mini-cover{position:relative;z-index:2;width:54px;height:54px;border-radius:15px;background:#151b22 center/cover no-repeat;box-shadow:0 10px 26px rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.1);grid-column:1;grid-row:1;align-self:center}
+.v46-mini-meta{position:relative;z-index:2;grid-column:2;grid-row:1;min-width:0;align-self:center;padding-right:2px}
+.v46-mini-title{font-size:14px;font-weight:900;line-height:1.12;color:#f7f9fc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.018em}
+.v46-mini-artist{margin-top:4px;font-size:11px;font-weight:650;color:rgba(236,241,248,.58);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#v45MiniPlay{grid-column:3;grid-row:1;align-self:center}
+#v45MiniLoop{grid-column:4;grid-row:1;align-self:center}
+#v45MiniPlayer .v45-mini-track{grid-column:1/-1;grid-row:2;height:20px!important;padding:0 3px!important}
+#v45MiniProgress{height:20px!important}
+body.v45-mini-visible #resultsView{padding-bottom:max(118px,calc(102px + env(safe-area-inset-bottom)))!important}
+@media(max-width:760px){#v45MiniPlayer{grid-template-columns:48px minmax(0,1fr) 42px 39px!important;min-height:72px!important;padding:7px 8px 6px!important;column-gap:7px!important}.v46-mini-cover{width:48px;height:48px;border-radius:13px}.v46-mini-title{font-size:13px}.v46-mini-artist{font-size:10px;margin-top:3px}#v45MiniPlayer .v45-mini-track{height:18px!important}#v45MiniProgress{height:18px!important}}
+@media(max-width:390px){#v45MiniPlayer{grid-template-columns:44px minmax(0,1fr) 40px 37px!important;column-gap:6px!important}.v46-mini-cover{width:44px;height:44px;border-radius:12px}.v46-mini-title{font-size:12.5px}#v45MiniPlay{width:40px;height:40px!important}#v45MiniLoop{width:37px;height:37px!important}}
