@@ -1,0 +1,13 @@
+/* Audify V41 — Intro Failsafe */
+.v32-intro{
+  animation:v41IntroFailsafe .55s ease 2.35s forwards!important;
+}
+.v32-intro.v32-hide{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+@keyframes v41IntroFailsafe{
+  from{opacity:1;visibility:visible;pointer-events:auto}
+  to{opacity:0;visibility:hidden;pointer-events:none}
+}
