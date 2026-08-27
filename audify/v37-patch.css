@@ -1,0 +1,9 @@
+/* Audify V37 — Karaoke button visibility fix */
+#v36LyricsBtn{display:inline-flex!important;visibility:visible!important;opacity:1!important;position:relative!important;z-index:12!important;pointer-events:auto!important;flex:0 0 auto!important}
+.player .actions{overflow:visible!important;display:flex!important;align-items:center!important;flex-wrap:nowrap!important}
+@media(max-width:760px){
+  #v36LyricsBtn{min-width:78px!important;width:auto!important;height:40px!important;padding:7px 9px!important;border-radius:12px!important;font-size:12px!important;gap:5px!important}
+  #v36LyricsBtn .v36-mic{font-size:14px!important}
+  .player .actions{gap:5px!important;justify-content:flex-end!important;min-width:0!important}
+  .player .video-btn{min-width:76px!important;width:auto!important;padding:7px 9px!important;font-size:12px!important}
+}
