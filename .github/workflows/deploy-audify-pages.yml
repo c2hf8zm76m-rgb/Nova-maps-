@@ -2,6 +2,11 @@ name: Deploy Audify to GitHub Pages
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'audify/**'
+      - '.github/workflows/deploy-audify-pages.yml'
 
 permissions:
   contents: read
