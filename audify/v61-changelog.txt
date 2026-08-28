@@ -1,0 +1,7 @@
+V61
+- Keeps YouTube as discovery/search catalogue.
+- Adds Audius matching for alternate streamable tracks.
+- Uses a hidden HTMLAudioElement as primary player when a close Audius match is available.
+- Rebinds Media Session controls/metadata/position to the HTMLAudioElement.
+- Adds source badge (YouTube/Audius) for testing.
+- Adds optional client-side Audius API Key helper; never stores a Bearer Token.
