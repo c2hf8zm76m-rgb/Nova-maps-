@@ -1,0 +1,15 @@
+/* Audify V47 — Mini Player Loop Feedback */
+#v45MiniLoop{position:relative;overflow:visible;will-change:transform,box-shadow}
+#v45MiniLoop svg{transform-origin:50% 50%}
+#v45MiniLoop.v47-loop-on{animation:v47LoopOn .72s cubic-bezier(.2,.88,.22,1.18)!important}
+#v45MiniLoop.v47-loop-on svg{animation:v47LoopSpin .58s cubic-bezier(.18,.82,.22,1.2)!important}
+#v45MiniLoop.v47-loop-on::after{content:"";position:absolute;inset:-8px;border-radius:18px;border:2px solid rgba(168,255,63,.58);pointer-events:none;animation:v47LoopRing .72s ease-out forwards}
+#v45MiniLoop.v47-loop-off{animation:v47LoopOff .46s cubic-bezier(.25,.75,.25,1.15)!important}
+#v45MiniLoop.v47-loop-off svg{animation:v47LoopReverse .42s ease-out!important}
+@keyframes v47LoopOn{0%{transform:scale(1);box-shadow:0 0 0 rgba(168,255,63,0)}28%{transform:scale(.88) rotate(-7deg)}58%{transform:scale(1.16) rotate(4deg);box-shadow:0 0 34px rgba(168,255,63,.42)}100%{transform:scale(1) rotate(0);box-shadow:0 0 22px rgba(168,255,63,.18),inset 0 1px 0 rgba(255,255,255,.3)}}
+@keyframes v47LoopSpin{0%{transform:rotate(0) scale(1)}45%{transform:rotate(225deg) scale(.88)}100%{transform:rotate(360deg) scale(1)}}
+@keyframes v47LoopRing{0%{opacity:.9;transform:scale(.72)}100%{opacity:0;transform:scale(1.42)}}
+@keyframes v47LoopOff{0%{transform:scale(1)}38%{transform:scale(.9) rotate(5deg)}72%{transform:scale(1.08) rotate(-2deg)}100%{transform:scale(1) rotate(0)}}
+@keyframes v47LoopReverse{0%{transform:rotate(0)}100%{transform:rotate(-180deg)}}
+@media(max-width:760px){#v45MiniLoop.v47-loop-on::after{inset:-6px;border-radius:17px}}
+@media(prefers-reduced-motion:reduce){#v45MiniLoop.v47-loop-on,#v45MiniLoop.v47-loop-off,#v45MiniLoop.v47-loop-on svg,#v45MiniLoop.v47-loop-off svg,#v45MiniLoop.v47-loop-on::after{animation:none!important}}
