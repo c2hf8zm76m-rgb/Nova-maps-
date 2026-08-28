@@ -9,7 +9,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
-    private static final String AUDIFY_URL = "https://raw.githack.com/c2hf8zm76m-rgb/Nova-maps-/main/audify/index-v47.html";
+    private static final String AUDIFY_URL = "https://raw.githack.com/c2hf8zm76m-rgb/Nova-maps-/main/audify/index-v58.html?source=android&fresh=58";
     private WebView webView;
 
     @Override
@@ -40,7 +40,7 @@ public class MainActivity extends Activity {
         s.setBuiltInZoomControls(false);
         s.setDisplayZoomControls(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-        s.setUserAgentString(s.getUserAgentString() + " AudifyAndroid/1.0.47");
+        s.setUserAgentString(s.getUserAgentString() + " AudifyAndroid/1.0.58");
 
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient());
