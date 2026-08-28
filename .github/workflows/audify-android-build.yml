@@ -36,11 +36,11 @@ jobs:
         run: gradle -p audify-android assembleDebug --stacktrace
 
       - name: Prepare APK
-        run: cp audify-android/app/build/outputs/apk/debug/app-debug.apk Audify-V47.apk
+        run: cp audify-android/app/build/outputs/apk/debug/app-debug.apk Audify-V58.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V47-APK
-          path: Audify-V47.apk
+          name: Audify-V58-APK
+          path: Audify-V58.apk
           if-no-files-found: error
