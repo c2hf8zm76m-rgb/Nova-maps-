@@ -1,0 +1,1 @@
+(()=>{if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw-v61.js',{scope:'./'}).catch(()=>{})})();
