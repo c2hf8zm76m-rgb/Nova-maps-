@@ -1,0 +1,22 @@
+/* Audify V52 — Animated Mini Player → Full Player */
+#v52TransitionShade{position:fixed;inset:0;z-index:138;pointer-events:none;background:rgba(3,6,10,.28);backdrop-filter:blur(0);-webkit-backdrop-filter:blur(0);opacity:0;transition:opacity .22s ease,backdrop-filter .38s ease,-webkit-backdrop-filter .38s ease}
+#v52TransitionShade.v52-show{opacity:1;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+#v52TransitionShade.v52-out{opacity:0;backdrop-filter:blur(0);-webkit-backdrop-filter:blur(0)}
+.v52-flight-cover{position:fixed;z-index:142;pointer-events:none;background-position:center;background-size:cover;background-repeat:no-repeat;border:1px solid rgba(255,255,255,.14);box-shadow:0 20px 54px rgba(0,0,0,.4);will-change:left,top,width,height,border-radius,box-shadow}
+body.v52-transitioning{overflow:hidden!important}
+body.v52-transitioning #playerView .stage{animation:none!important}
+body.v52-transitioning #playerView .cover{opacity:0!important}
+body.v52-transitioning #playerView .vinyl,
+body.v52-transitioning #playerView .copy,
+body.v52-transitioning #playerView .player{opacity:0;transition:opacity .4s ease,transform .48s cubic-bezier(.2,.82,.22,1)}
+body.v52-transitioning #playerView .copy,
+body.v52-transitioning #playerView .player{transform:translateY(18px) scale(.985)}
+body.v52-transitioning.v52-reveal #playerView .vinyl,
+body.v52-transitioning.v52-reveal #playerView .copy,
+body.v52-transitioning.v52-reveal #playerView .player{opacity:1}
+body.v52-transitioning.v52-reveal #playerView .copy,
+body.v52-transitioning.v52-reveal #playerView .player{transform:translateY(0) scale(1)}
+body.v52-arrived #playerView .cover{animation:v52CoverSettle .34s cubic-bezier(.2,.86,.24,1)}
+@keyframes v52CoverSettle{0%{transform:translateX(-10%) scale(.975)}58%{transform:translateX(-10%) scale(1.012)}100%{transform:translateX(-10%) scale(1)}}
+@media(max-width:760px){body.v52-arrived #playerView .cover{animation:v52CoverSettleMobile .34s cubic-bezier(.2,.86,.24,1)}@keyframes v52CoverSettleMobile{0%{transform:translateX(-10%) scale(.975)}58%{transform:translateX(-10%) scale(1.012)}100%{transform:translateX(-10%) scale(1)}}}
+@media(prefers-reduced-motion:reduce){#v52TransitionShade,.v52-flight-cover,body.v52-transitioning #playerView .vinyl,body.v52-transitioning #playerView .copy,body.v52-transitioning #playerView .player{transition:none!important;animation:none!important}}
