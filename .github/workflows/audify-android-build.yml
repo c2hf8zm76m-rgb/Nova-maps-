@@ -5,8 +5,12 @@ on:
     branches: [ main ]
     paths:
       - 'audify-android/**'
+      - '!audify-android/releases/**'
       - '.github/workflows/audify-android-build.yml'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -36,11 +40,22 @@ jobs:
         run: gradle -p audify-android assembleDebug --stacktrace
 
       - name: Prepare APK
-        run: cp audify-android/app/build/outputs/apk/debug/app-debug.apk Audify-V58.apk
+        run: |
+          cp audify-android/app/build/outputs/apk/debug/app-debug.apk Audify-V58.apk
+          mkdir -p audify-android/releases
+          cp Audify-V58.apk audify-android/releases/Audify-V58.apk
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: Audify-V58-APK
           path: Audify-V58.apk
           if-no-files-found: error
+
+      - name: Publish APK in repository
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f audify-android/releases/Audify-V58.apk
+          git diff --cached --quiet || git commit -m 'Publish Audify V58 APK'
+          git push
