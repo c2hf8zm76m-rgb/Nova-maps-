@@ -1,0 +1,7 @@
+TEST IOS V61
+1. Ouvrir index-v61-live.html.
+2. Lancer un titre depuis le catalogue YouTube.
+3. Observer le badge sous le titre:
+   - "Audius • audio arrière-plan" = vrai moteur HTMLAudio actif, test écran verrouillé possible.
+   - "YouTube • pas d’équivalent BG" ou "source BG indisponible" = morceau reste sur le moteur YouTube.
+4. Quand le badge Audius est actif, verrouiller l’iPhone ou changer d’application et vérifier que le titre/artist/pochette apparaissent dans les contrôles système et que la lecture continue.
