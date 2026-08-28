@@ -1,0 +1,1 @@
+Audify V61 hybrid background audio test build. YouTube remains the discovery catalogue. When a sufficiently close Audius match is found, playback switches to an HTMLAudioElement so iOS can keep a real media session alive in background. Otherwise playback remains on YouTube.
