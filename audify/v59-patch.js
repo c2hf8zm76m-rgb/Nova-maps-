@@ -22,11 +22,11 @@
     if(miniProg&&d)miniProg.value=String(Math.max(0,Math.min(1000,Math.round(t/d*1000))));
   }
 
-  function snapshot(force=false){
+  function snapshot(){
     const t=cur(),p=player();if(!t?.id||!p)return null;
     let a=actualTime();const ps=playerState(),playing=ps===1||ps===3;
     const old=read();
-    if(!force&&a<.4&&old?.id===t.id&&Number(old.time)>2)a=Number(old.time);
+    if(a<.4&&old?.id===t.id&&Number(old.time)>2)a=Math.max(Number(old.time)||0,lastGoodTime||0);
     const snap={id:t.id,time:Math.max(0,a),wall:now(),playing,duration:duration()||Number(old?.duration||0)};
     write(snap);lastGoodTime=snap.time;lastGoodWall=snap.wall;lastPlaying=playing;return snap;
   }
@@ -43,50 +43,46 @@
   function rememberSeek(range){
     const t=cur(),d=duration();if(!t?.id||!d)return;
     const target=d*(Number(range.value||0)/1000);
-    const s={id:t.id,time:target,wall:now(),playing:playerState()===1,duration:d};write(s);lastGoodTime=target;lastGoodWall=s.wall;
+    const s={id:t.id,time:target,wall:now(),playing:playerState()===1,duration:d};write(s);lastGoodTime=target;lastGoodWall=s.wall;lastPlaying=s.playing;
   }
 
-  async function restore(reason='resume'){
+  async function restore(){
     const t=cur(),p=player();if(!t?.id||!p)return;
     const snap=hiddenSnapshot?.id===t.id?hiddenSnapshot:read();
     if(!snap||snap.id!==t.id||Number(snap.time)<1)return;
     const target=expectedFrom(snap);const d=duration()||Number(snap.duration)||0;
     if(d>0&&target>=d-1)return;
     resumeGuardUntil=now()+3800;
-    setUI(target);
-    const delays=[180,520,1000,1700];
-    for(const ms of delays){
-      await new Promise(r=>setTimeout(r,ms-(delays[delays.indexOf(ms)-1]||0)));
+    lastGoodTime=target;lastGoodWall=now();lastPlaying=!!snap.playing;setUI(target);
+    const waits=[180,340,480,700];
+    for(const ms of waits){
+      await new Promise(r=>setTimeout(r,ms));
       if(cur()?.id!==snap.id)return;
       const a=actualTime();
-      if(a>=target-2||a>3){lastGoodTime=a;lastGoodWall=now();setUI(a);snapshot(true);return}
+      if(a>=target-2||a>3){lastGoodTime=a;lastGoodWall=now();setUI(a);snapshot();return}
     }
     const a=actualTime();
     if((a<2.2||target-a>4)&&target>2){
       try{p.seekTo(target,true);if(snap.playing)p.playVideo()}catch{}
       setUI(target);lastGoodTime=target;lastGoodWall=now();
-      setTimeout(()=>snapshot(true),500);
+      setTimeout(()=>snapshot(),500);
     }
   }
 
-  function onHidden(){hiddenSnapshot=snapshot(true)||read()}
-  function onVisible(){setTimeout(()=>restore('visible'),120)}
+  function onHidden(){hiddenSnapshot=snapshot()||read()}
+  function onVisible(){setTimeout(restore,120)}
 
   function tick(){
     const t=cur();if(!t?.id)return;
-    if(t.id!==lastTrackId){lastTrackId=t.id;hiddenSnapshot=null;lastGoodTime=0;lastGoodWall=now();snapshot(true);return}
+    if(t.id!==lastTrackId){lastTrackId=t.id;hiddenSnapshot=null;lastGoodTime=0;lastGoodWall=now();snapshot();return}
     if(document.hidden)return;
     const a=actualTime(),ps=playerState(),playing=ps===1||ps===3;
-    if(a>.35){lastGoodTime=a;lastGoodWall=now();lastPlaying=playing;snapshot(true);setUI(a);return}
-    if(now()<resumeGuardUntil&&lastGoodTime>1){
-      const projected=lastGoodTime+(lastPlaying?(now()-lastGoodWall)/1000:0);setUI(projected);
-    }
+    if(a>.35){lastGoodTime=a;lastGoodWall=now();lastPlaying=playing;snapshot();setUI(a);return}
+    if(now()<resumeGuardUntil&&lastGoodTime>1){const projected=lastGoodTime+(lastPlaying?(now()-lastGoodWall)/1000:0);setUI(projected)}
   }
 
-  function bindRanges(){
-    ['#prog','#v45MiniProgress'].forEach(sel=>{const el=document.querySelector(sel);if(el&&el.dataset.v59Bound!=='1'){el.dataset.v59Bound='1';el.addEventListener('input',()=>rememberSeek(el),{passive:true});el.addEventListener('change',()=>rememberSeek(el),{passive:true})}})
-  }
+  function bindRanges(){['#prog','#v45MiniProgress'].forEach(sel=>{const el=document.querySelector(sel);if(el&&el.dataset.v59Bound!=='1'){el.dataset.v59Bound='1';el.addEventListener('input',()=>rememberSeek(el),{passive:true});el.addEventListener('change',()=>rememberSeek(el),{passive:true})}})}
   function registerSW(){if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw-v59.js',{scope:'./'}).catch(()=>{})}
-  function boot(){registerSW();bindRanges();setInterval(()=>{bindRanges();tick()},260);document.addEventListener('visibilitychange',()=>{document.hidden?onHidden():onVisible()});window.addEventListener('pagehide',onHidden);window.addEventListener('pageshow',()=>setTimeout(()=>restore('pageshow'),160));window.addEventListener('focus',()=>setTimeout(()=>restore('focus'),220));document.addEventListener('freeze',onHidden);document.addEventListener('resume',()=>setTimeout(()=>restore('resume'),160));}
+  function boot(){registerSW();bindRanges();setInterval(()=>{bindRanges();tick()},260);document.addEventListener('visibilitychange',()=>{document.hidden?onHidden():onVisible()});window.addEventListener('pagehide',onHidden);window.addEventListener('pageshow',()=>setTimeout(restore,160));window.addEventListener('focus',()=>setTimeout(restore,220));document.addEventListener('freeze',onHidden);document.addEventListener('resume',()=>setTimeout(restore,160));}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
