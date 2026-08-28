@@ -1,0 +1,5 @@
+const CACHE='audify-v61-shell';
+const CORE=['./index-v61.html','./index-v60.html','./manifest-v61.webmanifest','./v61-patch.css','./v61-patch.js','./pwa-icon-192.svg','./pwa-icon-512.svg'];
+self.addEventListener('install',e=>e.waitUntil((async()=>{const c=await caches.open(CACHE);await Promise.allSettled(CORE.map(x=>c.add(x)));await self.skipWaiting()})()));
+self.addEventListener('activate',e=>e.waitUntil((async()=>{for(const k of await caches.keys())if(k.startsWith('audify-v')&&k!==CACHE)await caches.delete(k);await self.clients.claim()})()));
+self.addEventListener('fetch',e=>{const r=e.request;if(r.method!=='GET')return;const u=new URL(r.url);if(u.origin!==self.location.origin)return;if(r.mode==='navigate'){e.respondWith(fetch(r).then(x=>{const c=x.clone();caches.open(CACHE).then(k=>k.put(r,c));return x}).catch(()=>caches.match(r).then(x=>x||caches.match('./index-v61.html'))));return}e.respondWith(caches.match(r).then(hit=>hit||fetch(r).then(x=>{if(x.ok){const c=x.clone();caches.open(CACHE).then(k=>k.put(r,c))}return x})))});
