@@ -1,30 +1,52 @@
 (()=>{
-  const KEY='audify_intro_seen_session_v1';
+  'use strict';
+  const MIN_MS=1700;
+  const MAX_MS=7000;
+  let startedAt=0,closing=false;
+
   function buildIntro(){
     if(document.querySelector('#v32Intro'))return document.querySelector('#v32Intro');
     const el=document.createElement('div');
     el.id='v32Intro';
     el.className='v32-intro';
-    el.innerHTML='<div class="v32-wrap"><div class="v32-core"><div class="v32-orb"></div><div class="v32-logo">A</div></div><div class="v32-name">AUDIFY</div><div class="v32-sub">Chargement de ton univers musical</div><div class="v32-progress"><i></i></div></div><button id="v32Skip" class="v32-skip" type="button">Passer</button>';
+    el.setAttribute('role','status');
+    el.setAttribute('aria-live','polite');
+    el.innerHTML='<div class="v32-wrap"><div class="v32-core"><div class="v32-orb"></div><div class="v32-logo">A</div></div><div class="v32-name">AUDIFY</div><div class="v32-sub">Chargement de ton univers musical</div></div>';
     document.body.appendChild(el);
     return el;
   }
+
+  function appReady(){
+    const shell=!!(document.querySelector('#resultsView')&&document.querySelector('#playerView')&&document.querySelector('#q')&&document.querySelector('#go'));
+    const stateReady=(()=>{try{return typeof S!=='undefined'&&!!S}catch{return false}})();
+    return shell&&stateReady&&document.readyState!=='loading';
+  }
+
   function hideIntro(){
+    if(closing)return;
+    closing=true;
     const el=document.querySelector('#v32Intro');
     if(!el)return;
     document.body.style.overflow='';
     el.classList.add('v32-hide');
     setTimeout(()=>el.remove(),650);
   }
-  function showIntro(){
-    let seen=false;
-    try{seen=sessionStorage.getItem(KEY)==='1'}catch{}
-    if(seen)return;
-    const el=buildIntro();
-    document.body.style.overflow='hidden';
-    try{sessionStorage.setItem(KEY,'1')}catch{}
-    el.querySelector('#v32Skip')?.addEventListener('click',hideIntro,{once:true});
-    setTimeout(hideIntro,2100);
+
+  function waitUntilReady(){
+    const elapsed=Date.now()-startedAt;
+    if(elapsed>=MIN_MS&&(appReady()||elapsed>=MAX_MS)){
+      hideIntro();
+      return;
+    }
+    setTimeout(waitUntilReady,90);
   }
+
+  function showIntro(){
+    startedAt=Date.now();
+    buildIntro();
+    document.body.style.overflow='hidden';
+    waitUntilReady();
+  }
+
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',showIntro,{once:true});else showIntro();
 })();
