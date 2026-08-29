@@ -8,6 +8,12 @@ on:
       - 'audify/**'
       - 'audify-android/**'
       - '.github/workflows/audify-android-bg-test.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'audify/**'
+      - 'audify-android/**'
+      - '.github/workflows/audify-android-bg-test.yml'
 
 concurrency:
   group: audify-android-bg-${{ github.ref }}
