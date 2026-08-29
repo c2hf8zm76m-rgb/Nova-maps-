@@ -21,23 +21,26 @@
     const wrap=search.closest('.search-wrap');
     if(wrap){
       wrap.style.pointerEvents='auto';
-      wrap.style.zIndex='100';
+      wrap.style.zIndex='220';
     }
 
-    if(q.dataset.androidFocusFix==='1')return true;
-    q.dataset.androidFocusFix='1';
+    if(q.dataset.androidFocusFix==='2')return true;
+    q.dataset.androidFocusFix='2';
 
     const focusInput=()=>{
+      try{q.focus({preventScroll:true})}catch{try{q.focus()}catch{}}
       try{
-        q.focus({preventScroll:true});
-      }catch{
-        try{q.focus()}catch{}
-      }
+        if(window.AudifyNative&&typeof window.AudifyNative.focusSearch==='function'){
+          window.AudifyNative.focusSearch();
+        }
+      }catch{}
     };
 
-    q.addEventListener('pointerdown',focusInput,true);
-    q.addEventListener('touchstart',focusInput,{capture:true,passive:true});
+    // On déclenche le focus au relâchement du doigt : Android peut alors
+    // ouvrir explicitement son IME après que WebView a identifié le champ.
+    q.addEventListener('pointerup',focusInput,true);
     q.addEventListener('click',focusInput,true);
+    q.addEventListener('touchend',focusInput,{capture:true,passive:true});
 
     search.addEventListener('pointerup',e=>{
       if(e.target.closest('button'))return;
@@ -56,7 +59,7 @@
     let tries=0;
     const timer=setInterval(()=>{
       bind();
-      if(++tries>40)clearInterval(timer);
+      if(++tries>80)clearInterval(timer);
     },250);
   }
 
