@@ -19,15 +19,15 @@ await cp(path.join(root, 'remove-browser-install-ui.js'), path.join(www, 'remove
 // Android ne passe plus par index-v59 -> fetch(index-v21) -> document.write().
 // On assemble la page finale au build : démarrage local, déterministe et sans écran blanc.
 const cssPatches = [
-  22,23,24,25,26,27,28,29,30,31,32,33,34,35,38,39,40,45,46,47,48,49,50,51,53,54,55,56,57,58
+  22,23,24,25,26,27,28,29,30,31,32,33,34,35,38,39,40,45,46,47,48,49,50,51,53,54,55,56,57,58,65
 ];
 const jsPatches = [
-  22,23,24,25,26,27,28,29,30,31,32,33,34,35,44,45,46,47,48,49,50,51,53,54,55,56,57,58,59
+  22,23,24,25,26,27,28,29,30,31,32,33,34,35,44,45,46,47,48,49,50,51,53,54,55,56,57,58,59,65
 ];
 
 const source = path.join(audify, 'index-v21.html');
 let html = await readFile(source, 'utf8');
-html = html.replace(/<title>[^<]*<\/title>/i, '<title>Audify Android V64.8</title>');
+html = html.replace(/<title>[^<]*<\/title>/i, '<title>Audify Android V65 • Pour toi</title>');
 html = html.replace(
   /<meta name="viewport"[^>]*>/i,
   '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#070a0f">'
@@ -35,18 +35,18 @@ html = html.replace(
 
 const css = [
   '<style>html,body{margin:0;background:#070a0f!important;color:#fff}body{min-height:100%;}.search-wrap,.search,#q{pointer-events:auto!important}#q{touch-action:manipulation!important;-webkit-user-select:text!important;user-select:text!important}</style>',
-  ...cssPatches.map(v => `<link rel="stylesheet" href="./v${v}-patch.css?v=android-v648">`)
+  ...cssPatches.map(v => `<link rel="stylesheet" href="./v${v}-patch.css?v=android-v65">`)
 ].join('');
 html = html.replace('</head>', css + '</head>');
 
 const scripts = [
-  ...jsPatches.map(v => `<script src="./v${v}-patch.js?v=android-v648"><\/script>`),
-  '<script src="./native-android-bridge.js?v=android-v648-native"><\/script>',
-  '<script src="./manual-queue-ui-fix.js?v=android-v648-manual-queue"><\/script>',
-  '<script src="./search-focus-fix.js?v=android-v648-search"><\/script>',
-  '<script src="./remove-browser-install-ui.js?v=android-v648-no-browser-install"><\/script>'
+  ...jsPatches.map(v => `<script src="./v${v}-patch.js?v=android-v65"><\/script>`),
+  '<script src="./native-android-bridge.js?v=android-v65-native"><\/script>',
+  '<script src="./manual-queue-ui-fix.js?v=android-v65-manual-queue"><\/script>',
+  '<script src="./search-focus-fix.js?v=android-v65-search"><\/script>',
+  '<script src="./remove-browser-install-ui.js?v=android-v65-no-browser-install"><\/script>'
 ].join('');
 html = html.replace('</body>', scripts + '</body>');
 
 await writeFile(path.join(www, 'index.html'), html, 'utf8');
-console.log('Audify Android V64.8 assemblé directement depuis V21 dans', www);
+console.log('Audify Android V65 assemblé directement depuis V21 dans', www);
