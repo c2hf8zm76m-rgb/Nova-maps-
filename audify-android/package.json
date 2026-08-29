@@ -1,13 +1,13 @@
 {
   "name": "audify-android",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "private": true,
-  "description": "Audify Android V66 native playback, recommendations and Google Drive sync",
+  "description": "Audify Android V66.1 native playback, recommendations, Google Drive sync and root search fix",
   "scripts": {
     "prepare:web": "node scripts/prepare-web.mjs",
     "android:add": "npx cap add android",
     "android:sync": "npm run prepare:web && npx cap sync android",
-    "android:patch": "node scripts/patch-android.mjs && node scripts/v64-upgrade.mjs && node scripts/v641-fix.mjs && node scripts/v644-system-player.mjs && node scripts/v645-search-focus.mjs && node scripts/v647-native-ime.mjs && node scripts/v66-google-drive-sync.mjs"
+    "android:patch": "node scripts/patch-android.mjs && node scripts/v64-upgrade.mjs && node scripts/v641-fix.mjs && node scripts/v644-system-player.mjs && node scripts/v645-search-focus.mjs && node scripts/v66-google-drive-sync.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
