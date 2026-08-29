@@ -9,11 +9,9 @@ const config: CapacitorConfig = {
   },
   android: {
     allowMixedContent: false,
-    // Android 15 / target SDK 35 dessine les apps edge-to-edge.
-    // Sans marge native, la barre Audify visible en haut peut se retrouver
-    // sous la zone système : elle est visible mais Android intercepte le toucher.
-    // Capacitor applique ici les vrais insets système au WebView.
-    adjustMarginsForEdgeToEdge: 'force'
+    // V66.3 applique directement les vrais WindowInsets dans MainActivity.
+    // On désactive donc l'ajustement Capacitor pour éviter doubles marges et variations WebView.
+    adjustMarginsForEdgeToEdge: 'disable'
   }
 };
 
