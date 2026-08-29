@@ -1,8 +1,8 @@
 {
   "name": "audify-android",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "private": true,
-  "description": "Audify Android V64.7 native YouTube playback",
+  "description": "Audify Android V64.8 native YouTube playback",
   "scripts": {
     "prepare:web": "node scripts/prepare-web.mjs",
     "android:add": "npx cap add android",
