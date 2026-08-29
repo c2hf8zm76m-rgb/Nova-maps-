@@ -1,13 +1,13 @@
 {
   "name": "audify-android",
-  "version": "0.3.1",
+  "version": "0.3.4",
   "private": true,
-  "description": "Audify Android V64.1 native YouTube playback",
+  "description": "Audify Android V64.4 native YouTube playback",
   "scripts": {
     "prepare:web": "node scripts/prepare-web.mjs",
     "android:add": "npx cap add android",
     "android:sync": "npm run prepare:web && npx cap sync android",
-    "android:patch": "node scripts/patch-android.mjs && node scripts/v64-upgrade.mjs && node scripts/v641-fix.mjs"
+    "android:patch": "node scripts/patch-android.mjs && node scripts/v64-upgrade.mjs && node scripts/v641-fix.mjs && node scripts/v644-system-player.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
