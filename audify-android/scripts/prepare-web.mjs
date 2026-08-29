@@ -25,17 +25,17 @@ const jsPatches = [
 
 const source = path.join(audify, 'index-v21.html');
 let html = await readFile(source, 'utf8');
-html = html.replace(/<title>[^<]*<\/title>/i, '<title>Audify Android V66.1 • Search Root Fix</title>');
+html = html.replace(/<title>[^<]*<\/title>/i, '<title>Audify Android V66.2 • System Insets Search Fix</title>');
 html = html.replace(
   /<meta name="viewport"[^>]*>/i,
   '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#070a0f">'
 );
 
-// IMPORTANT V66.1 : Android WebView avait la barre dans une couche compositée
-// (fixed + translateX + backdrop-filter). On la remet dans une couche simple
-// afin que le hit-testing et le caret HTML soient gérés nativement par WebView.
+// V66.2 : ce CSS Android est volontairement injecté APRES tous les anciens patchs.
+// Les patchs V31/V33/V34 remontaient la recherche à ~5px du viewport.
+// Le viewport reçoit désormais aussi les vrais insets système via Capacitor.
 const androidSearchCss = `
-<style>
+<style id="audify-android-search-root-v662">
 html,body{margin:0;background:#070a0f!important;color:#fff}
 body{min-height:100%}
 .search-wrap{
@@ -64,7 +64,7 @@ body{min-height:100%}
   z-index:3!important;
   display:block!important;
   pointer-events:auto!important;
-  touch-action:auto!important;
+  touch-action:manipulation!important;
   -webkit-user-select:text!important;
   user-select:text!important;
   cursor:text!important;
@@ -78,20 +78,20 @@ body{min-height:100%}
 </style>`;
 
 const css = [
-  androidSearchCss,
-  ...cssPatches.map(v => `<link rel="stylesheet" href="./v${v}-patch.css?v=android-v661">`)
+  ...cssPatches.map(v => `<link rel="stylesheet" href="./v${v}-patch.css?v=android-v662">`),
+  androidSearchCss
 ].join('');
 html = html.replace('</head>', css + '</head>');
 
 const scripts = [
-  ...jsPatches.map(v => `<script src="./v${v}-patch.js?v=android-v661"><\/script>`),
-  '<script src="./native-android-bridge.js?v=android-v661-native"><\/script>',
-  '<script src="./manual-queue-ui-fix.js?v=android-v661-manual-queue"><\/script>',
-  '<script src="./remove-browser-install-ui.js?v=android-v661-no-browser-install"><\/script>',
-  '<script src="./google-sync-config.js?v=android-v661"><\/script>',
-  '<script src="./v66-patch.js?v=android-v661"><\/script>'
+  ...jsPatches.map(v => `<script src="./v${v}-patch.js?v=android-v662"><\/script>`),
+  '<script src="./native-android-bridge.js?v=android-v662-native"><\/script>',
+  '<script src="./manual-queue-ui-fix.js?v=android-v662-manual-queue"><\/script>',
+  '<script src="./remove-browser-install-ui.js?v=android-v662-no-browser-install"><\/script>',
+  '<script src="./google-sync-config.js?v=android-v662"><\/script>',
+  '<script src="./v66-patch.js?v=android-v662"><\/script>'
 ].join('');
 html = html.replace('</body>', scripts + '</body>');
 
 await writeFile(path.join(www, 'index.html'), html, 'utf8');
-console.log('Audify Android V66.1 : barre de recherche sortie de la couche compositée WebView.');
+console.log('Audify Android V66.2 : insets système + hit-test recherche corrigés à la racine.');
