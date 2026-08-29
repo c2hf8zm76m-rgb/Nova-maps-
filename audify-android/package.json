@@ -7,7 +7,7 @@
     "prepare:web": "node scripts/prepare-web.mjs",
     "android:add": "npx cap add android",
     "android:sync": "npm run prepare:web && npx cap sync android",
-    "android:patch": "node scripts/patch-android.mjs"
+    "android:patch": "node scripts/patch-android.mjs && node scripts/fix-android.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
