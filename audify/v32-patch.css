@@ -1,7 +1,7 @@
-/* Audify V32 — Intro Morph */
-.v32-intro{position:fixed;inset:0;z-index:120;display:grid;place-items:center;background:radial-gradient(circle at 50% 38%,rgba(168,255,63,.08),transparent 18%),linear-gradient(180deg,rgba(7,10,15,.92),rgba(7,10,15,.98));backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);opacity:1;transition:opacity .6s ease,visibility .6s ease}
+/* Audify V64.3 — Intro Morph, sans barre ni bouton */
+.v32-intro{position:fixed;inset:0;z-index:120;display:grid;place-items:center;background:radial-gradient(circle at 50% 38%,rgba(168,255,63,.08),transparent 18%),linear-gradient(180deg,rgba(7,10,15,.94),rgba(7,10,15,.99));backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);opacity:1;transition:opacity .6s ease,visibility .6s ease;touch-action:none}
 .v32-intro.v32-hide{opacity:0;visibility:hidden;pointer-events:none}
-.v32-wrap{text-align:center;position:relative}
+.v32-wrap{text-align:center;position:relative;transform:translateY(-1.5vh)}
 .v32-core{position:relative;width:min(220px,52vw);aspect-ratio:1/1;display:grid;place-items:center;margin:auto}
 .v32-orb{position:absolute;inset:14%;border-radius:34%;background:linear-gradient(135deg,rgba(255,255,255,.2),rgba(255,255,255,.04) 42%,rgba(168,255,63,.22));border:1px solid rgba(255,255,255,.15);box-shadow:0 25px 80px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.16),0 0 55px rgba(168,255,63,.12);animation:v32Morph 2.3s ease-in-out infinite alternate}
 .v32-orb:before,.v32-orb:after{content:"";position:absolute;border-radius:40%;background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.02))}
@@ -10,13 +10,10 @@
 .v32-logo{position:relative;z-index:2;font-size:clamp(78px,16vw,124px);font-weight:1000;line-height:1;letter-spacing:-.09em;color:#f8fbff;text-shadow:0 12px 38px rgba(0,0,0,.24);transform:translateY(-2px);animation:v32Pulse 1.25s ease-in-out infinite}
 .v32-logo:after{content:"";position:absolute;left:50%;top:60%;width:74%;height:12%;transform:translateX(-50%);border-radius:999px;background:linear-gradient(90deg,transparent,rgba(168,255,63,.8),transparent);filter:blur(9px);opacity:.75;animation:v32Glow 1.5s ease-in-out infinite}
 .v32-name{margin-top:18px;font-weight:800;letter-spacing:.34em;font-size:12px;color:rgba(236,242,249,.76);text-transform:uppercase}
-.v32-sub{margin-top:8px;color:rgba(236,242,249,.46);font-size:12px}
-.v32-progress{margin:18px auto 0;width:min(160px,36vw);height:5px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid rgba(255,255,255,.08)}
-.v32-progress i{display:block;width:100%;height:100%;border-radius:inherit;background:linear-gradient(90deg,rgba(168,255,63,.2),rgba(168,255,63,.95),rgba(255,255,255,.85));transform-origin:left center;animation:v32Load 1.85s ease forwards}
-.v32-skip{position:absolute;bottom:max(26px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);padding:10px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:rgba(241,245,250,.68);font-size:12px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.v32-sub{margin-top:9px;color:rgba(236,242,249,.42);font-size:12px;animation:v32SubPulse 1.6s ease-in-out infinite}
 @keyframes v32Morph{0%{border-radius:30% 42% 35% 45% / 38% 32% 48% 34%;transform:rotate(0) scale(.94)}50%{border-radius:48% 30% 44% 28% / 36% 48% 30% 40%;transform:rotate(8deg) scale(1.04)}100%{border-radius:36% 46% 28% 44% / 44% 30% 40% 32%;transform:rotate(-8deg) scale(.98)}}
 @keyframes v32Float{from{transform:translate(-3px,-4px) scale(.96)}to{transform:translate(6px,6px) scale(1.04)}}
 @keyframes v32Pulse{0%,100%{transform:translateY(-2px) scale(1)}50%{transform:translateY(-2px) scale(1.04)}}
 @keyframes v32Glow{0%,100%{opacity:.45;transform:translateX(-50%) scaleX(.78)}50%{opacity:.95;transform:translateX(-50%) scaleX(1.08)}}
-@keyframes v32Load{0%{transform:scaleX(.06);opacity:.5}100%{transform:scaleX(1);opacity:1}}
-@media(prefers-reduced-motion:reduce){.v32-orb,.v32-orb:before,.v32-orb:after,.v32-logo,.v32-logo:after,.v32-progress i{animation:none!important}}
+@keyframes v32SubPulse{0%,100%{opacity:.48}50%{opacity:.82}}
+@media(prefers-reduced-motion:reduce){.v32-orb,.v32-orb:before,.v32-orb:after,.v32-logo,.v32-logo:after,.v32-sub{animation:none!important}}
