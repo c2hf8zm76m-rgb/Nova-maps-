@@ -13,11 +13,13 @@ await mkdir(www, { recursive: true });
 await cp(audify, www, { recursive: true });
 await cp(path.join(root, 'native-android-bridge.js'), path.join(www, 'native-android-bridge.js'));
 
-const source = path.join(audify, 'index-v60.html');
+// V59 conserve toute l'interface Audify sans le patch V60 Media Session/WebView,
+// car la lecture de fond est maintenant entièrement native côté Android.
+const source = path.join(audify, 'index-v59.html');
 let html = await readFile(source, 'utf8');
-html = html.replace(/<title>[^<]*<\/title>/i, '<title>Audify Android BG Test</title>');
+html = html.replace(/<title>[^<]*<\/title>/i, '<title>Audify Android V63 Native</title>');
 const marker = 'document.open();document.write(s);document.close()';
-if (!html.includes(marker)) throw new Error('Point d’injection V60 introuvable');
-html = html.replace(marker, "s=s.replace('</body>','<script src=\"./native-android-bridge.js?v=android-bg1\"><\\/script></body>');" + marker);
+if (!html.includes(marker)) throw new Error('Point d’injection V59 introuvable');
+html = html.replace(marker, "s=s.replace('</body>','<script src=\"./native-android-bridge.js?v=android-v63-native\"><\\/script></body>');" + marker);
 await writeFile(path.join(www, 'index.html'), html, 'utf8');
-console.log('Audify V60 + pont natif Android préparés dans', www);
+console.log('Audify Android V63 Native préparé dans', www);
