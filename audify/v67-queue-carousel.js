@@ -6,7 +6,7 @@
   const FAVORITES_KEY='audify_favorites_v1';
   const MAX_QUEUE=100;
   let lastKey='',lastCurrentId='',selectedId='';
-  let externalIntent=false,queuePlayTarget='',touchStart=null;
+  let externalIntent=false,transportIntent=false,queuePlayTarget='',touchStart=null;
 
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const state=()=>{try{return typeof S!=='undefined'?S:null}catch{return null}};
@@ -60,13 +60,13 @@
 
     const before=readStore();
     const isQueued=before.some(x=>String(x.id)===id);
-    const fromQueue=queuePlayTarget===id||(!externalIntent&&isQueued);
+    const keepQueue=transportIntent||queuePlayTarget===id||(!externalIntent&&isQueued);
 
     if(before.length||readList(PENDING_KEY).length){
-      if(externalIntent||!fromQueue){
+      if(externalIntent&&!transportIntent){
         clearEphemeralQueue(id);
-      }else{
-        writeStore(before.filter(x=>String(x.id)!==id));
+      }else if(keepQueue){
+        if(isQueued)writeStore(before.filter(x=>String(x.id)!==id));
         const s=state(),cur=current();
         if(cur?.__v56Queued===true){try{delete cur.__v56Queued}catch{cur.__v56Queued=false}}
         if(Array.isArray(s?.items)){
@@ -74,12 +74,15 @@
           if(hit?.__v56Queued===true){try{delete hit.__v56Queued}catch{hit.__v56Queued=false}}
         }
         lastKey='';
+      }else{
+        clearEphemeralQueue(id);
       }
     }
 
     if(selectedId===id)selectedId='';
     lastCurrentId=id;
     externalIntent=false;
+    transportIntent=false;
     queuePlayTarget='';
   }
 
@@ -127,7 +130,7 @@
     let items=Array.isArray(s.items)?s.items.filter(Boolean):[];
     let i=items.findIndex(x=>String(x?.id)===id);
     if(i<0){items.push({...saved,__v56Queued:true});i=items.length-1;s.items=items}
-    queuePlayTarget=id;externalIntent=false;
+    queuePlayTarget=id;externalIntent=false;transportIntent=false;
     try{
       if(typeof playTrack==='function')playTrack(items[i],i);
       else if(typeof window.playTrack==='function')window.playTrack(items[i],i);
@@ -183,7 +186,11 @@
 
   function markExternalIntent(){
     if(!readStore().length&&!readList(PENDING_KEY).length)return;
-    externalIntent=true;queuePlayTarget='';
+    externalIntent=true;transportIntent=false;queuePlayTarget='';
+  }
+  function markTransportIntent(){
+    if(!readStore().length&&!readList(PENDING_KEY).length)return;
+    transportIntent=true;externalIntent=false;queuePlayTarget='';
   }
 
   function boot(){
@@ -198,7 +205,8 @@
       const queueBtn=target.closest('.v56-add-queue,.v57-add-queue');
       if(queueBtn){const t=trackFromQueueButton(queueBtn);if(t){remember(t);setTimeout(sync,0)}return}
       if(target.closest('#v67ManualQueue'))return;
-      if(target.closest('[data-p],[data-play],[data-fav-play],.v48-recent-card,.v50-sheet-item,#prev,#next'))markExternalIntent();
+      if(target.closest('#prev,#next')){markTransportIntent();return}
+      if(target.closest('[data-p],[data-play],[data-fav-play],.v48-recent-card,.v50-sheet-item'))markExternalIntent();
     },true);
 
     document.addEventListener('touchstart',e=>{
@@ -208,7 +216,7 @@
     document.addEventListener('touchend',e=>{
       if(!touchStart)return;
       const t=e.changedTouches?.[0];
-      if(t){const dx=t.clientX-touchStart.x,dy=t.clientY-touchStart.y;if(Math.abs(dx)>48&&Math.abs(dx)>Math.abs(dy)*1.25)markExternalIntent()}
+      if(t){const dx=t.clientX-touchStart.x,dy=t.clientY-touchStart.y;if(Math.abs(dx)>48&&Math.abs(dx)>Math.abs(dy)*1.25)markTransportIntent()}
       touchStart=null;
     },{passive:true,capture:true});
 
