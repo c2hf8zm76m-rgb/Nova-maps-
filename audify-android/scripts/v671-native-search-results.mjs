@@ -16,10 +16,11 @@ if(!main.includes('import android.view.inputmethod.EditorInfo;')){
 }
 
 const classMarker='public class MainActivity extends BridgeActivity {';
-if(!main.includes(classMarker))throw new Error('Classe MainActivity introuvable pour V67.1.2');
+if(!main.includes(classMarker))throw new Error('Classe MainActivity introuvable pour V67.1.3');
 
 const members=String.raw`
     private Button audifyNativeSearchButtonV671;
+    private volatile String audifyPendingSearchV671 = "";
 
     private void submitAudifyNativeSearchV671() {
         try {
@@ -28,23 +29,16 @@ const members=String.raw`
             String query = input.getText() == null ? "" : input.getText().toString().trim();
             if (query.isEmpty()) return;
 
+            // V67.1.3 : Android ne pousse plus de JavaScript vers Chromium.
+            // Il dépose simplement la requête. La page Web vient elle-même la récupérer
+            // via l'interface AudifyNative déjà utilisée avec succès par le lecteur.
+            audifyPendingSearchV671 = query;
+
             Button button = audifyNativeSearchButtonV671;
             if (button != null) {
                 button.setText("Recherche…");
-                button.postDelayed(() -> { try { button.setText("Rechercher"); } catch(Exception ignored){} }, 900);
+                button.postDelayed(() -> { try { button.setText("Rechercher"); } catch(Exception ignored){} }, 1200);
             }
-
-            WebView webView = getBridge().getWebView();
-            String quoted = JSONObject.quote(query);
-            String js = "(function(q){try{" +
-                "var r=document.getElementById('results');" +
-                "var rv=document.getElementById('resultsView');" +
-                "if(rv)rv.hidden=false;" +
-                "if(r){r.className='empty';r.textContent='Recherche…';}" +
-                "if(typeof window.AudifyNativeSearch==='function'){window.AudifyNativeSearch(q);return;}" +
-                "if(r)r.textContent='Erreur: moteur de recherche natif absent.';" +
-                "}catch(e){var r=document.getElementById('results');if(r)r.textContent='Erreur pont: '+String(e);}})(" + quoted + ");";
-            webView.loadUrl("javascript:" + js);
 
             input.clearFocus();
             InputMethodManager imm=(InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);
@@ -72,7 +66,6 @@ const members=String.raw`
             if (!(contentView instanceof FrameLayout)) return;
             FrameLayout content = (FrameLayout) contentView;
 
-            // Le champ et le bouton ne se chevauchent plus du tout.
             FrameLayout.LayoutParams inputLp = (FrameLayout.LayoutParams) input.getLayoutParams();
             inputLp.setMargins(audifyDp(20),audifyDp(10),audifyDp(182),0);
             input.setLayoutParams(inputLp);
@@ -109,9 +102,14 @@ const members=String.raw`
 `;
 main=main.replace(classMarker,classMarker+members);
 
+// Expose une file de recherche minimale au JavaScript via le bridge WebView existant.
+const bridgeMarker='    private final class AudifyJsBridge {';
+if(!main.includes(bridgeMarker))throw new Error('AudifyJsBridge introuvable pour V67.1.3');
+main=main.replace(bridgeMarker,`${bridgeMarker}\n        @JavascriptInterface public String takeNativeSearchQuery(){\n            String q=audifyPendingSearchV671;\n            audifyPendingSearchV671=\"\";\n            return q==null?\"\":q;\n        }`);
+
 const marker='installAudifyNativeSearchV670();';
-if(!main.includes(marker))throw new Error('Installation native V67.0 introuvable pour V67.1.2');
-main=main.replace(marker,`${marker}\n        // V67.1.2 : bouton séparé + javascript URL bridge.\n        upgradeAudifyNativeSearchV671();`);
+if(!main.includes(marker))throw new Error('Installation native V67.0 introuvable pour V67.1.3');
+main=main.replace(marker,`${marker}\n        // V67.1.3 : pont inversé WebView -> Android pour récupérer les recherches.\n        upgradeAudifyNativeSearchV671();`);
 
 await writeFile(mainPath,main,'utf8');
-console.log('Audify Android V67.1.2 : bouton natif séparé et pont loadUrl javascript.');
+console.log('Audify Android V67.1.3 : recherche native mise en file, récupérée depuis AudifyNative.');
