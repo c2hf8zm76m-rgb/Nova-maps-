@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Audify">
-  <link rel="manifest" href="./manifest-v67.webmanifest?v=20260830-67">
-  <link rel="apple-touch-icon" href="./pwa-icon-192.svg?v=20260830-67">
+  <link rel="manifest" href="./manifest-v67.webmanifest?v=20260830-67-art1">
+  <link rel="apple-touch-icon" href="./pwa-icon-192.svg?v=20260830-67-art1">
   <title>Audify V67 • Clean Boot</title>
   <style>
     html,body{margin:0;min-height:100%;background:#070a0f;color:#fff;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
@@ -25,9 +25,9 @@
 (async()=>{
   'use strict';
   const VERSION='67';
-  const stamp='20260830-67';
-  const css=[22,23,24,25,26,27,28,29,30,31,32,33,34,35,38,39,40,45,46,47,48,49,50,51,53,54,55,56,57,58,65,66].map(v=>'v'+v+'-patch.css');
-  const js=[22,23,24,25,26,27,28,29,30,31,32,33,34,35,44,45,46,47,48,49,50,51,53,54,55,56,57,58,59,60,65].map(v=>'v'+v+'-patch.js').concat(['google-sync-config.js','v66-patch.js']);
+  const stamp='20260830-67-art1';
+  const css=[22,23,24,25,26,27,28,29,30,31,32,33,34,35,38,39,40,45,46,47,48,49,50,51,53,54,55,56,57,58,65,66].map(v=>'v'+v+'-patch.css').concat(['v67-artist-images.css']);
+  const js=[22,23,24,25,26,27,28,29,30,31,32,33,34,35,44,45,46,47,48,49,50,51,53,54,55,56,57,58,59,60,65].map(v=>'v'+v+'-patch.js').concat(['google-sync-config.js','v66-patch.js','v67-artist-images.js']);
   const boot=document.getElementById('audifyBoot');
   const errEl=document.getElementById('audifyBootError');
   const fail=(e)=>{console.error('[Audify V67 boot]',e);if(errEl){errEl.style.display='block';errEl.textContent='Erreur de démarrage Audify V67 : '+(e&&e.message?e.message:String(e));}};
