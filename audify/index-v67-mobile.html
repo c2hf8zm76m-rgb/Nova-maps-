@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Audify">
-  <link rel="manifest" href="./manifest-v60.webmanifest?v=20260830-67">
+  <link rel="manifest" href="./manifest-v67.webmanifest?v=20260830-67">
   <link rel="apple-touch-icon" href="./pwa-icon-192.svg?v=20260830-67">
   <title>Audify V67 • Clean Boot</title>
   <style>
@@ -47,11 +47,17 @@
     for(const node of [...doc.head.children])if(node.tagName==='STYLE'||node.tagName==='LINK')document.head.appendChild(node.cloneNode(true));
     const mount=document.createElement('div');mount.id='audifyAppMount';mount.innerHTML=doc.body.innerHTML;document.body.appendChild(mount);
     for(const href of css){const l=document.createElement('link');l.rel='stylesheet';l.href='./'+href+'?v='+stamp;document.head.appendChild(l);}
+    window.__audifyYTReadyEarly=false;
+    window.onYouTubeIframeAPIReady=()=>{window.__audifyYTReadyEarly=true};
+    const yt=document.createElement('script');yt.src='https://www.youtube.com/iframe_api';yt.async=true;yt.onerror=()=>console.warn('[Audify V67] YouTube iframe API indisponible');document.head.appendChild(yt);
     for(const item of legacyScripts){
       if(item.src&&item.src.includes('youtube.com/iframe_api'))continue;
       if(item.src){await addExternal(item.src);continue;}
       if(!item.code.trim())continue;
       const s=document.createElement('script');if(item.type)s.type=item.type;s.textContent=item.code;document.body.appendChild(s);
+    }
+    if(window.__audifyYTReadyEarly&&window.YT?.Player&&typeof window.onYouTubeIframeAPIReady==='function'){
+      try{window.onYouTubeIframeAPIReady()}catch(e){console.warn('[Audify V67] YT delayed init',e)}
     }
     for(const src of js)await addExternal('./'+src+'?v='+stamp);
     window.AUDIFY_VERSION=VERSION;
@@ -59,7 +65,6 @@
     window.dispatchEvent(new CustomEvent('audify:v67-ready'));
     boot?.classList.add('done');
     setTimeout(()=>boot?.remove(),450);
-    const yt=document.createElement('script');yt.src='https://www.youtube.com/iframe_api';yt.async=true;yt.onerror=()=>console.warn('[Audify V67] YouTube iframe API indisponible');document.head.appendChild(yt);
   }catch(e){fail(e)}
 })();
 </script>
