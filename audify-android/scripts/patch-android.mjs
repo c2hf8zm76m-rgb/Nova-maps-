@@ -26,6 +26,8 @@ import com.getcapacitor.BridgeActivity;
 import org.json.JSONObject;
 
 public class MainActivity extends BridgeActivity {
+    private boolean audifyBridgeReloadScheduled = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -35,6 +37,17 @@ public class MainActivity extends BridgeActivity {
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.addJavascriptInterface(new AudifyJsBridge(), "AudifyNative");
+
+        // Android WebView n'expose un objet addJavascriptInterface au JavaScript
+        // qu'au chargement suivant. Capacitor a deja lance index.html dans
+        // super.onCreate(), donc on force exactement un nouveau chargement apres
+        // l'injection. Cela rend AudifyNative disponible des le debut de la page.
+        if (!audifyBridgeReloadScheduled) {
+            audifyBridgeReloadScheduled = true;
+            webView.post(() -> {
+                try { webView.reload(); } catch (Exception ignored) {}
+            });
+        }
 
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 6301);
@@ -355,4 +368,4 @@ if (!gradle.includes('NewPipeExtractor')) {
 }
 await writeFile(gradlePath, gradle, 'utf8');
 
-console.log('Audify Android V63: NewPipeExtractor + Media3/ExoPlayer patch appliqué.');
+console.log('Audify Android V67.1.4: bridge JavaScript natif injecte puis WebView rechargee une fois.');
