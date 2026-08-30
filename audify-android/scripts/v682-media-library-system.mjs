@@ -10,7 +10,8 @@ const servicePath=path.join(pkgDir,'AudifyPlaybackService.java');
 let service=await readFile(servicePath,'utf8');
 
 // V68.2 : aligner le service système sur l'architecture MediaLibrary utilisée
-// par les lecteurs musicaux Android modernes (et Umihi).
+// par les lecteurs musicaux Android modernes (et Umihi), sans changer le
+// niveau compileSdk de l'application pendant ce test ciblé.
 service=service.replace(
   'import androidx.media3.session.MediaSessionService;',
   'import androidx.media3.session.MediaLibraryService;\nimport androidx.media3.session.MediaLibraryService.MediaLibrarySession;\nimport androidx.media3.session.DefaultMediaNotificationProvider;\nimport androidx.media3.session.CacheBitmapLoader;\nimport androidx.media3.datasource.DataSourceBitmapLoader;'
@@ -66,12 +67,7 @@ if(!manifest.includes('android:appCategory="audio"')){
 }
 await writeFile(manifestPath,manifest,'utf8');
 
-// Umihi est désormais en Media3 1.11.0. On garde tous les modules Media3 alignés.
-const gradlePath=path.join(android,'app','build.gradle');
-let gradle=await readFile(gradlePath,'utf8');
-gradle=gradle.replace(/androidx\.media3:media3-exoplayer:1\.6\.1/g,'androidx.media3:media3-exoplayer:1.11.0');
-gradle=gradle.replace(/androidx\.media3:media3-session:1\.6\.1/g,'androidx.media3:media3-session:1.11.0');
-gradle=gradle.replace(/androidx\.media3:media3-datasource:1\.6\.1/g,'androidx.media3:media3-datasource:1.11.0');
-await writeFile(gradlePath,gradle,'utf8');
-
-console.log('Audify Android V68.2 : MediaLibraryService + notification Media3 explicite + Media3 1.11.0 appliqués.');
+// On conserve Media3 1.6.1 pour ce test : cette version est compatible avec
+// compileSdk 35. Le point à valider ici est l'architecture MediaLibrary et la
+// notification système, pas une migration simultanée du toolchain Android.
+console.log('Audify Android V68.2 : MediaLibraryService + notification Media3 explicite appliqués sur Media3 compatible.');
