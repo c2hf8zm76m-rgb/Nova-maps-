@@ -33,10 +33,23 @@
   const fail=(e)=>{console.error('[Audify V67 boot]',e);if(errEl){errEl.style.display='block';errEl.textContent='Erreur de démarrage Audify V67 : '+(e&&e.message?e.message:String(e));}};
   const fetchWithTimeout=(url,ms=12000)=>Promise.race([fetch(url,{cache:'no-store'}),new Promise((_,rej)=>setTimeout(()=>rej(new Error('délai dépassé pour '+url)),ms))]);
   const addExternal=(src,parent=document.body)=>new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.async=false;s.onload=resolve;s.onerror=()=>reject(new Error('échec '+src));parent.appendChild(s);});
-  try{
+  async function cleanupLegacySW(){
     if('serviceWorker' in navigator){
-      try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){const url=r.active?.scriptURL||r.waiting?.scriptURL||r.installing?.scriptURL||'';if(/sw-v61\.js/.test(url))await r.unregister();}}catch(e){console.warn('[Audify V67] SW cleanup',e)}
+      try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){const url=r.active?.scriptURL||r.waiting?.scriptURL||r.installing?.scriptURL||'';if(/\/audify\/sw-v\d+\.js(?:\?|$)/i.test(url)||/\/sw-v\d+\.js(?:\?|$)/i.test(url))await r.unregister();}}catch(e){console.warn('[Audify V67] SW cleanup',e)}
     }
+    if('caches' in window){try{for(const k of await caches.keys())if(/^audify-v/i.test(k))await caches.delete(k)}catch(e){console.warn('[Audify V67] cache cleanup',e)}}
+  }
+  function suppressLegacySW(){
+    if(!('serviceWorker' in navigator))return;
+    try{
+      const sw=navigator.serviceWorker;
+      const real=sw.register.bind(sw);
+      Object.defineProperty(sw,'register',{configurable:true,value:(url,opts)=>/sw-v\d+\.js(?:\?|$)/i.test(String(url))?Promise.resolve(null):real(url,opts)});
+    }catch(e){console.warn('[Audify V67] SW suppression',e)}
+  }
+  try{
+    await cleanupLegacySW();
+    suppressLegacySW();
     const res=await fetchWithTimeout('./index-v21.html?v='+stamp);
     if(!res.ok)throw new Error('index-v21 '+res.status);
     const html=await res.text();
@@ -60,6 +73,9 @@
       try{window.onYouTubeIframeAPIReady()}catch(e){console.warn('[Audify V67] YT delayed init',e)}
     }
     for(const src of js)await addExternal('./'+src+'?v='+stamp);
+    await cleanupLegacySW();
+    setTimeout(cleanupLegacySW,1200);
+    setTimeout(cleanupLegacySW,3500);
     window.AUDIFY_VERSION=VERSION;
     document.dispatchEvent(new Event('DOMContentLoaded',{bubbles:true}));
     window.dispatchEvent(new CustomEvent('audify:v67-ready'));
