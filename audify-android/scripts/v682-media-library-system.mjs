@@ -14,7 +14,7 @@ let service=await readFile(servicePath,'utf8');
 // niveau compileSdk de l'application pendant ce test ciblé.
 service=service.replace(
   'import androidx.media3.session.MediaSessionService;',
-  'import androidx.media3.session.MediaLibraryService;\nimport androidx.media3.session.MediaLibraryService.MediaLibrarySession;\nimport androidx.media3.session.DefaultMediaNotificationProvider;\nimport androidx.media3.session.CacheBitmapLoader;\nimport androidx.media3.datasource.DataSourceBitmapLoader;'
+  'import androidx.media3.session.MediaLibraryService;\nimport androidx.media3.session.MediaLibraryService.MediaLibrarySession;\nimport androidx.media3.session.DefaultMediaNotificationProvider;'
 );
 service=service.replace(
   'public class AudifyPlaybackService extends MediaSessionService {',
@@ -26,7 +26,7 @@ service=service.replace(
 );
 
 const oldSession=`mediaSession = new MediaSession.Builder(this, systemPlayer)\n            .setSessionActivity(sessionActivity)\n            .build();`;
-const newSession=`MediaLibrarySession.Callback libraryCallback = new MediaLibrarySession.Callback() {};\n        mediaSession = new MediaLibrarySession.Builder(this, systemPlayer, libraryCallback)\n            .setSessionActivity(sessionActivity)\n            .setBitmapLoader(new CacheBitmapLoader(\n                new DataSourceBitmapLoader.Builder(this)\n                    .setMakeShared(true)\n                    .build()\n            ))\n            .build();`;
+const newSession=`MediaLibrarySession.Callback libraryCallback = new MediaLibrarySession.Callback() {};\n        mediaSession = new MediaLibrarySession.Builder(this, systemPlayer, libraryCallback)\n            .setSessionActivity(sessionActivity)\n            .build();`;
 if(!service.includes(oldSession)) throw new Error('Bloc MediaSession V68.1 introuvable pour migration MediaLibrary');
 service=service.replace(oldSession,newSession);
 
@@ -37,19 +37,9 @@ service=service.replace(
 
 // Forcer un vrai provider de notification Media3 et son canal système.
 const createNeedle='        instance = this;\n        mainHandler = new Handler(Looper.getMainLooper());\n        NewPipe.init(new AudifyDownloader());';
-const createReplacement=`        instance = this;\n        mainHandler = new Handler(Looper.getMainLooper());\n\n        DefaultMediaNotificationProvider mediaNotificationProvider =\n            new DefaultMediaNotificationProvider(this);\n        mediaNotificationProvider.setSmallIcon(R.drawable.audify_media_notification);\n        setMediaNotificationProvider(mediaNotificationProvider);\n        setShowNotificationForIdlePlayer(\n            androidx.media3.session.MediaSessionService.SHOW_NOTIFICATION_FOR_IDLE_PLAYER_ALWAYS\n        );\n\n        NewPipe.init(new AudifyDownloader());`;
+const createReplacement=`        instance = this;\n        mainHandler = new Handler(Looper.getMainLooper());\n\n        DefaultMediaNotificationProvider mediaNotificationProvider =\n            new DefaultMediaNotificationProvider(this);\n        mediaNotificationProvider.setSmallIcon(R.drawable.audify_media_notification);\n        setMediaNotificationProvider(mediaNotificationProvider);\n\n        NewPipe.init(new AudifyDownloader());`;
 if(!service.includes(createNeedle)) throw new Error('onCreate AudifyPlaybackService introuvable');
 service=service.replace(createNeedle,createReplacement);
-
-// Demander au système une mise à jour immédiate lorsque l'état ou le titre change.
-service=service.replace(
-  'public void onIsPlayingChanged(boolean isPlaying) {\n                updateSnapshot();\n            }',
-  'public void onIsPlayingChanged(boolean isPlaying) {\n                updateSnapshot();\n                try { triggerNotificationUpdate(); } catch (Throwable ignored) {}\n            }'
-);
-service=service.replace(
-  'snapshotError = "";\n                updateSnapshot();\n            }\n\n            @Override\n            public void onPlayerError',
-  'snapshotError = "";\n                updateSnapshot();\n                try { triggerNotificationUpdate(); } catch (Throwable ignored) {}\n            }\n\n            @Override\n            public void onPlayerError'
-);
 
 await writeFile(servicePath,service,'utf8');
 
@@ -70,4 +60,4 @@ await writeFile(manifestPath,manifest,'utf8');
 // On conserve Media3 1.6.1 pour ce test : cette version est compatible avec
 // compileSdk 35. Le point à valider ici est l'architecture MediaLibrary et la
 // notification système, pas une migration simultanée du toolchain Android.
-console.log('Audify Android V68.2 : MediaLibraryService + notification Media3 explicite appliqués sur Media3 compatible.');
+console.log('Audify Android V68.2 : MediaLibraryService + notification Media3 explicite compatible compileSdk 35.');
