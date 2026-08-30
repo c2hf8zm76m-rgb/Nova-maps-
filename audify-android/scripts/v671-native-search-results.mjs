@@ -16,7 +16,7 @@ if(!main.includes('import android.view.inputmethod.EditorInfo;')){
 }
 
 const classMarker='public class MainActivity extends BridgeActivity {';
-if(!main.includes(classMarker))throw new Error('Classe MainActivity introuvable pour V67.1.1');
+if(!main.includes(classMarker))throw new Error('Classe MainActivity introuvable pour V67.1.2');
 
 const members=String.raw`
     private Button audifyNativeSearchButtonV671;
@@ -28,24 +28,23 @@ const members=String.raw`
             String query = input.getText() == null ? "" : input.getText().toString().trim();
             if (query.isEmpty()) return;
 
+            Button button = audifyNativeSearchButtonV671;
+            if (button != null) {
+                button.setText("Recherche…");
+                button.postDelayed(() -> { try { button.setText("Rechercher"); } catch(Exception ignored){} }, 900);
+            }
+
             WebView webView = getBridge().getWebView();
             String quoted = JSONObject.quote(query);
             String js = "(function(q){try{" +
-                "if(typeof window.AudifyNativeSearch!=='function'){" +
-                    "var r=document.getElementById('results');" +
-                    "var rv=document.getElementById('resultsView');" +
-                    "if(rv)rv.hidden=false;" +
-                    "if(r){r.className='empty';r.textContent='Pont de recherche indisponible.';}" +
-                    "return 'missing-native-search';" +
-                "}" +
-                "window.AudifyNativeSearch(q);" +
-                "return 'started';" +
-                "}catch(e){" +
-                    "var r=document.getElementById('results');" +
-                    "if(r){r.className='empty';r.textContent='Erreur pont natif: '+String((e&&e.message)||e);}" +
-                    "return 'error';" +
-                "}})(" + quoted + ");";
-            webView.post(() -> webView.evaluateJavascript(js, null));
+                "var r=document.getElementById('results');" +
+                "var rv=document.getElementById('resultsView');" +
+                "if(rv)rv.hidden=false;" +
+                "if(r){r.className='empty';r.textContent='Recherche…';}" +
+                "if(typeof window.AudifyNativeSearch==='function'){window.AudifyNativeSearch(q);return;}" +
+                "if(r)r.textContent='Erreur: moteur de recherche natif absent.';" +
+                "}catch(e){var r=document.getElementById('results');if(r)r.textContent='Erreur pont: '+String(e);}})(" + quoted + ");";
+            webView.loadUrl("javascript:" + js);
 
             input.clearFocus();
             InputMethodManager imm=(InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);
@@ -59,7 +58,7 @@ const members=String.raw`
             if (input == null || audifyNativeSearchButtonV671 != null) return;
 
             input.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
-            input.setPadding(audifyDp(24),0,audifyDp(170),0);
+            input.setPadding(audifyDp(24),0,audifyDp(24),0);
             input.setOnEditorActionListener((v,actionId,event)->{
                 boolean enter = event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER && event.getAction() == android.view.KeyEvent.ACTION_UP;
                 if(actionId==EditorInfo.IME_ACTION_SEARCH || actionId==EditorInfo.IME_ACTION_GO || actionId==EditorInfo.IME_ACTION_DONE || enter){
@@ -73,6 +72,11 @@ const members=String.raw`
             if (!(contentView instanceof FrameLayout)) return;
             FrameLayout content = (FrameLayout) contentView;
 
+            // Le champ et le bouton ne se chevauchent plus du tout.
+            FrameLayout.LayoutParams inputLp = (FrameLayout.LayoutParams) input.getLayoutParams();
+            inputLp.setMargins(audifyDp(20),audifyDp(10),audifyDp(182),0);
+            input.setLayoutParams(inputLp);
+
             Button button = new Button(this);
             audifyNativeSearchButtonV671 = button;
             button.setText("Rechercher");
@@ -83,6 +87,7 @@ const members=String.raw`
             button.setPadding(audifyDp(10),0,audifyDp(10),0);
             button.setElevation(audifyDp(34));
             button.setStateListAnimator(null);
+            button.setClickable(true);
 
             GradientDrawable bg = new GradientDrawable();
             bg.setShape(GradientDrawable.RECTANGLE);
@@ -91,12 +96,13 @@ const members=String.raw`
             button.setBackground(bg);
 
             FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                audifyDp(140),
+                audifyDp(150),
                 audifyDp(52),
                 android.view.Gravity.TOP | android.view.Gravity.RIGHT
             );
-            lp.setMargins(0,audifyDp(18),audifyDp(28),0);
+            lp.setMargins(0,audifyDp(18),audifyDp(20),0);
             content.addView(button,lp);
+            button.bringToFront();
             button.setOnClickListener(v->submitAudifyNativeSearchV671());
         } catch (Exception ignored) {}
     }
@@ -104,8 +110,8 @@ const members=String.raw`
 main=main.replace(classMarker,classMarker+members);
 
 const marker='installAudifyNativeSearchV670();';
-if(!main.includes(marker))throw new Error('Installation native V67.0 introuvable pour V67.1.1');
-main=main.replace(marker,`${marker}\n        // V67.1.1 : appel direct vers window.AudifyNativeSearch(query).\n        upgradeAudifyNativeSearchV671();`);
+if(!main.includes(marker))throw new Error('Installation native V67.0 introuvable pour V67.1.2');
+main=main.replace(marker,`${marker}\n        // V67.1.2 : bouton séparé + javascript URL bridge.\n        upgradeAudifyNativeSearchV671();`);
 
 await writeFile(mainPath,main,'utf8');
-console.log('Audify Android V67.1.1 : bouton natif -> AudifyNativeSearch(query) dédié.');
+console.log('Audify Android V67.1.2 : bouton natif séparé et pont loadUrl javascript.');
