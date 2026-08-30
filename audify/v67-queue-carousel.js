@@ -17,8 +17,8 @@
   const writeStore=v=>{try{localStorage.setItem(STORE_KEY,JSON.stringify((v||[]).filter(x=>x&&x.id).slice(0,MAX_QUEUE)))}catch{}};
 
   function remember(track){
-    const t=clean(track);if(!t||t.id===current()?.id)return;
-    const q=readStore().filter(x=>x.id!==t.id);q.push(t);writeStore(q);lastKey='';
+    const t=clean(track);if(!t||t.id===String(current()?.id||''))return;
+    const q=readStore().filter(x=>String(x.id)!==t.id);q.push(t);writeStore(q);lastKey='';
   }
 
   function recoverLegacyQueue(){
@@ -30,13 +30,13 @@
   function consumeCurrent(){
     const id=String(current()?.id||'');if(!id||id===lastCurrentId)return;
     lastCurrentId=id;
-    const before=readStore(),after=before.filter(x=>x.id!==id);
+    const before=readStore(),after=before.filter(x=>String(x.id)!==id);
     if(after.length!==before.length){writeStore(after);lastKey=''}
   }
 
   function manualQueue(){
     const id=String(current()?.id||'');
-    return readStore().filter(x=>x.id!==id);
+    return readStore().filter(x=>String(x.id)!==id);
   }
 
   function ensure(){
@@ -49,7 +49,9 @@
       sec.className='v67-manual-queue';
       sec.setAttribute('aria-label','File d’attente manuelle');
       sec.innerHTML='<div class="v67-mq-head"><div><span class="v67-mq-kicker">À SUIVRE</span><h3>File d’attente</h3></div><span id="v67MqCount" class="v67-mq-count"></span></div><div id="v67MqRow" class="v67-mq-row"></div>';
-      player.parentNode.insertBefore(sec,player);
+      const copy=view.querySelector('.copy');
+      if(copy&&copy.parentNode===player.parentNode)copy.insertAdjacentElement('afterend',sec);
+      else player.parentNode.insertBefore(sec,player);
     }
     return sec;
   }
@@ -110,6 +112,10 @@
   }
 
   function boot(){
+    window.addEventListener('audify:queue-added',e=>{
+      const t=e?.detail?.track;
+      if(t){remember(t);lastKey='';setTimeout(sync,0)}
+    });
     document.addEventListener('click',e=>{
       const btn=e.target.closest('.v56-add-queue,.v57-add-queue');if(!btn)return;
       const t=trackFromQueueButton(btn);if(t){remember(t);setTimeout(sync,0)}
