@@ -6,6 +6,7 @@
   const FAVORITES_KEY='audify_favorites_v1';
   const MAX_QUEUE=100;
   let lastKey='',lastCurrentId='',selectedId='';
+  let externalIntent=false,queuePlayTarget='',touchStart=null;
 
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const state=()=>{try{return typeof S!=='undefined'?S:null}catch{return null}};
@@ -15,10 +16,35 @@
   const readList=k=>{try{const x=JSON.parse(localStorage.getItem(k)||'[]');return Array.isArray(x)?x.filter(x=>x&&x.id):[]}catch{return []}};
   const readStore=()=>readList(STORE_KEY);
   const writeStore=v=>{try{localStorage.setItem(STORE_KEY,JSON.stringify((v||[]).filter(x=>x&&x.id).slice(0,MAX_QUEUE)))}catch{}};
+  const writePending=v=>{try{localStorage.setItem(PENDING_KEY,JSON.stringify((v||[]).filter(x=>x&&x.id).slice(0,MAX_QUEUE)))}catch{}};
 
   function remember(track){
     const t=clean(track);if(!t||t.id===String(current()?.id||''))return;
     const q=readStore().filter(x=>String(x.id)!==t.id);q.push(t);writeStore(q);lastKey='';
+  }
+
+  function clearEphemeralQueue(preserveId=''){
+    preserveId=String(preserveId||'');
+    const ids=new Set([...readStore(),...readList(PENDING_KEY)].map(x=>String(x.id)));
+    writeStore([]);writePending([]);
+    const s=state();
+    if(Array.isArray(s?.items)){
+      const kept=[];
+      for(const t of s.items){
+        if(!t)continue;
+        const id=String(t.id||'');
+        const wasQueued=t.__v56Queued===true||ids.has(id);
+        if(wasQueued&&id!==preserveId)continue;
+        if(t.__v56Queued===true){try{delete t.__v56Queued}catch{t.__v56Queued=false}}
+        kept.push(t);
+      }
+      s.items=kept;
+      if(preserveId){const i=kept.findIndex(x=>String(x?.id||'')===preserveId);if(i>=0)s.i=i}
+    }
+    selectedId='';lastKey='';
+    const view=playerView();
+    view?.classList.remove('v67-has-manual-queue');
+    const sec=view?.querySelector('#v67ManualQueue');if(sec)sec.hidden=true;
   }
 
   function recoverLegacyQueue(){
@@ -28,11 +54,33 @@
   }
 
   function consumeCurrent(){
-    const id=String(current()?.id||'');if(!id||id===lastCurrentId)return;
-    lastCurrentId=id;
-    const before=readStore(),after=before.filter(x=>String(x.id)!==id);
-    if(after.length!==before.length){writeStore(after);lastKey=''}
+    const id=String(current()?.id||'');if(!id)return;
+    if(!lastCurrentId){lastCurrentId=id;return}
+    if(id===lastCurrentId)return;
+
+    const before=readStore();
+    const isQueued=before.some(x=>String(x.id)===id);
+    const fromQueue=queuePlayTarget===id||(!externalIntent&&isQueued);
+
+    if(before.length||readList(PENDING_KEY).length){
+      if(externalIntent||!fromQueue){
+        clearEphemeralQueue(id);
+      }else{
+        writeStore(before.filter(x=>String(x.id)!==id));
+        const s=state(),cur=current();
+        if(cur?.__v56Queued===true){try{delete cur.__v56Queued}catch{cur.__v56Queued=false}}
+        if(Array.isArray(s?.items)){
+          const hit=s.items.find(x=>String(x?.id||'')===id);
+          if(hit?.__v56Queued===true){try{delete hit.__v56Queued}catch{hit.__v56Queued=false}}
+        }
+        lastKey='';
+      }
+    }
+
     if(selectedId===id)selectedId='';
+    lastCurrentId=id;
+    externalIntent=false;
+    queuePlayTarget='';
   }
 
   function manualQueue(){
@@ -73,11 +121,13 @@
   }
 
   function playStored(id){
-    const saved=readStore().find(x=>String(x.id)===String(id));if(!saved)return;
+    id=String(id||'');
+    const saved=readStore().find(x=>String(x.id)===id);if(!saved)return;
     const s=state();if(!s)return;
     let items=Array.isArray(s.items)?s.items.filter(Boolean):[];
-    let i=items.findIndex(x=>String(x?.id)===String(id));
+    let i=items.findIndex(x=>String(x?.id)===id);
     if(i<0){items.push({...saved,__v56Queued:true});i=items.length-1;s.items=items}
+    queuePlayTarget=id;externalIntent=false;
     try{
       if(typeof playTrack==='function')playTrack(items[i],i);
       else if(typeof window.playTrack==='function')window.playTrack(items[i],i);
@@ -131,18 +181,39 @@
     render(manualQueue());
   }
 
+  function markExternalIntent(){
+    if(!readStore().length&&!readList(PENDING_KEY).length)return;
+    externalIntent=true;queuePlayTarget='';
+  }
+
   function boot(){
     window.addEventListener('audify:queue-added',e=>{
       const t=e?.detail?.track;
       if(t){remember(t);lastKey='';setTimeout(sync,0)}
     });
+
     document.addEventListener('click',e=>{
-      const btn=e.target.closest('.v56-add-queue,.v57-add-queue');if(!btn)return;
-      const t=trackFromQueueButton(btn);if(t){remember(t);setTimeout(sync,0)}
+      const target=e.target;
+      const queueBtn=target.closest('.v56-add-queue,.v57-add-queue');
+      if(queueBtn){const t=trackFromQueueButton(queueBtn);if(t){remember(t);setTimeout(sync,0)}return}
+      if(target.closest('#v67ManualQueue'))return;
+      if(target.closest('[data-p],[data-fav-play],#prev,#next'))markExternalIntent();
     },true);
+
+    document.addEventListener('touchstart',e=>{
+      if(e.target.closest('#v67ManualQueue')){touchStart=null;return}
+      const t=e.touches?.[0];touchStart=t?{x:t.clientX,y:t.clientY}:null;
+    },{passive:true,capture:true});
+    document.addEventListener('touchend',e=>{
+      if(!touchStart)return;
+      const t=e.changedTouches?.[0];
+      if(t){const dx=t.clientX-touchStart.x,dy=t.clientY-touchStart.y;if(Math.abs(dx)>48&&Math.abs(dx)>Math.abs(dy)*1.25)markExternalIntent()}
+      touchStart=null;
+    },{passive:true,capture:true});
+
     ensure();sync();setInterval(sync,240);
     const view=playerView();if(view)new MutationObserver(sync).observe(view,{attributes:true,attributeFilter:['hidden']});
-    window.AudifyManualQueueCarouselV67={refresh:()=>{lastKey='';sync()},items:manualQueue,clear:()=>{writeStore([]);selectedId='';lastKey='';sync()}};
+    window.AudifyManualQueueCarouselV67={refresh:()=>{lastKey='';sync()},items:manualQueue,clear:()=>{clearEphemeralQueue(String(current()?.id||''));sync()}};
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
