@@ -75,6 +75,7 @@
     document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!navigator.onLine)show('Audify est hors ligne. Vérifie ta connexion Internet puis réessaie.')});
     document.addEventListener('click',e=>{
       const launch=e.target.closest('#go,[data-p],[data-play],[data-fav-play],.v48-recent-card,.v50-sheet-item');
+      if(launch){try{window.dispatchEvent(new CustomEvent('audify:external-play-intent',{detail:{source:'ui'}}))}catch{}}
       if(launch&&!navigator.onLine){e.preventDefault();e.stopImmediatePropagation();show('Aucune connexion Internet détectée. Reconnecte-toi avant de lancer cette action.');}
     },true);
     setInterval(inspectPlayer,650);
