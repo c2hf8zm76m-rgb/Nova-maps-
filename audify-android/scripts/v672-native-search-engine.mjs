@@ -4,19 +4,38 @@ import { fileURLToPath } from 'node:url';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
+const repoRoot=path.resolve(root,'..');
 const mainPath=path.join(root,'android','app','src','main','java','com','nova','audify','MainActivity.java');
+const webBasePath=path.join(repoRoot,'audify','index-v21.html');
 let main=await readFile(mainPath,'utf8');
+const webBase=await readFile(webBasePath,'utf8');
+
+// Reuse the exact YouTube Data API key already used by the historical Audify search.
+const keyMatch=webBase.match(/const KEY='([^']+)'/);
+if(!keyMatch) throw new Error('Cle YouTube historique introuvable dans index-v21.html');
+const youtubeKey=keyMatch[1];
 
 const classMarker='public class MainActivity extends BridgeActivity {';
-if(!main.includes(classMarker)) throw new Error('MainActivity introuvable pour V67.2');
+if(!main.includes(classMarker)) throw new Error('MainActivity introuvable pour V67.3');
 
 const members=String.raw`
-    // V67.2 — moteur de recherche YouTube 100 % natif Android.
-    // Aucune dépendance au DOM/WebView pour lancer ou afficher une recherche.
+    // V67.3 — restauration du moteur de recherche historique Audify.
+    // Recherche = YouTube Data API v3. Lecture = NewPipeExtractor + ExoPlayer.
+    private static final String AUDIFY_YOUTUBE_DATA_KEY_V673 = "${youtubeKey}";
     private final java.util.concurrent.ExecutorService audifySearchExecutorV672 = java.util.concurrent.Executors.newSingleThreadExecutor();
     private android.widget.ScrollView audifySearchScrollV672;
     private android.widget.LinearLayout audifySearchListV672;
     private int audifySearchGenerationV672 = 0;
+
+    private static final class AudifySearchItemV673 {
+        final String id;
+        final String title;
+        final String artist;
+        final String thumbnail;
+        AudifySearchItemV673(String id, String title, String artist, String thumbnail) {
+            this.id=id; this.title=title; this.artist=artist; this.thumbnail=thumbnail;
+        }
+    }
 
     private android.widget.TextView audifyResultTextV672(String text, float sp, int color) {
         android.widget.TextView v = new android.widget.TextView(this);
@@ -81,7 +100,19 @@ const members=String.raw`
         ));
     }
 
-    private void renderAudifyNativeResultsV672(java.util.List<org.schabi.newpipe.extractor.stream.StreamInfoItem> items, String query, int generation) {
+    private String audifyHtmlTextV673(String value) {
+        if (value == null) return "";
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 24) {
+                return android.text.Html.fromHtml(value, android.text.Html.FROM_HTML_MODE_LEGACY).toString();
+            }
+            return android.text.Html.fromHtml(value).toString();
+        } catch (Throwable ignored) {
+            return value;
+        }
+    }
+
+    private void renderAudifyNativeResultsV672(java.util.List<AudifySearchItemV673> items, String query, int generation) {
         if (generation != audifySearchGenerationV672) return;
         ensureAudifySearchResultsV672();
         if (audifySearchScrollV672 == null || audifySearchListV672 == null) return;
@@ -96,8 +127,8 @@ const members=String.raw`
         audifySearchListV672.addView(header);
 
         int index = 0;
-        for (org.schabi.newpipe.extractor.stream.StreamInfoItem item : items) {
-            if (index++ >= 25) break;
+        for (AudifySearchItemV673 item : items) {
+            if (index++ >= 20) break;
 
             android.widget.LinearLayout card = new android.widget.LinearLayout(this);
             card.setOrientation(android.widget.LinearLayout.VERTICAL);
@@ -110,18 +141,13 @@ const members=String.raw`
             bg.setCornerRadius(audifyDp(18));
             card.setBackground(bg);
 
-            String title = item.getName() == null ? "Sans titre" : item.getName();
-            String uploader = item.getUploaderName() == null ? "YouTube" : item.getUploaderName();
-            long duration = item.getDuration();
-            String durationText = duration > 0 ? "  •  " + (duration / 60) + ":" + String.format(java.util.Locale.US, "%02d", duration % 60) : "";
-
-            android.widget.TextView titleView = audifyResultTextV672(title, 17f, android.graphics.Color.WHITE);
+            android.widget.TextView titleView = audifyResultTextV672(item.title, 17f, android.graphics.Color.WHITE);
             titleView.setPadding(0,0,0,audifyDp(6));
             titleView.setMaxLines(2);
             titleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
             card.addView(titleView);
 
-            android.widget.TextView metaView = audifyResultTextV672(uploader + durationText, 13f, android.graphics.Color.rgb(170,178,190));
+            android.widget.TextView metaView = audifyResultTextV672(item.artist, 13f, android.graphics.Color.rgb(170,178,190));
             metaView.setPadding(0,0,0,0);
             metaView.setMaxLines(1);
             metaView.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -137,6 +163,19 @@ const members=String.raw`
         audifySearchScrollV672.scrollTo(0,0);
     }
 
+    private String audifyReadHttpV673(java.net.HttpURLConnection connection, int code) throws Exception {
+        java.io.InputStream stream = code >= 200 && code < 300
+            ? connection.getInputStream()
+            : connection.getErrorStream();
+        if (stream == null) return "";
+        java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(stream, java.nio.charset.StandardCharsets.UTF_8));
+        StringBuilder out = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) out.append(line);
+        reader.close();
+        return out.toString();
+    }
+
     private void runAudifyNativeSearchV672(String rawQuery) {
         final String query = rawQuery == null ? "" : rawQuery.trim();
         if (query.isEmpty()) return;
@@ -144,30 +183,72 @@ const members=String.raw`
         showAudifySearchStatusV672("Recherche YouTube de « " + query + " »…", false);
 
         audifySearchExecutorV672.execute(() -> {
+            java.net.HttpURLConnection connection = null;
             try {
-                // Initialisation indépendante : la recherche fonctionne même avant le premier morceau joué.
-                try { org.schabi.newpipe.extractor.NewPipe.init(new AudifyDownloader()); } catch (Throwable ignored) {}
-                org.schabi.newpipe.extractor.search.SearchExtractor extractor =
-                    org.schabi.newpipe.extractor.ServiceList.YouTube.getSearchExtractor(query);
-                org.schabi.newpipe.extractor.search.SearchInfo info =
-                    org.schabi.newpipe.extractor.search.SearchInfo.getInfo(extractor);
+                String encoded = java.net.URLEncoder.encode(query, "UTF-8");
+                String endpoint = "https://www.googleapis.com/youtube/v3/search"
+                    + "?part=snippet"
+                    + "&type=video"
+                    + "&videoEmbeddable=true"
+                    + "&maxResults=20"
+                    + "&q=" + encoded
+                    + "&key=" + java.net.URLEncoder.encode(AUDIFY_YOUTUBE_DATA_KEY_V673, "UTF-8");
 
-                java.util.ArrayList<org.schabi.newpipe.extractor.stream.StreamInfoItem> videos = new java.util.ArrayList<>();
-                for (org.schabi.newpipe.extractor.InfoItem item : info.getRelatedItems()) {
-                    if (item instanceof org.schabi.newpipe.extractor.stream.StreamInfoItem) {
-                        org.schabi.newpipe.extractor.stream.StreamInfoItem stream = (org.schabi.newpipe.extractor.stream.StreamInfoItem) item;
-                        if (!stream.isShortFormContent()) videos.add(stream);
+                connection = (java.net.HttpURLConnection) new java.net.URL(endpoint).openConnection();
+                connection.setRequestMethod("GET");
+                connection.setRequestProperty("Accept", "application/json");
+                connection.setConnectTimeout(12000);
+                connection.setReadTimeout(16000);
+                connection.setUseCaches(false);
+
+                int code = connection.getResponseCode();
+                String body = audifyReadHttpV673(connection, code);
+                org.json.JSONObject root = body.isEmpty() ? new org.json.JSONObject() : new org.json.JSONObject(body);
+
+                if (code < 200 || code >= 300) {
+                    String message = "YouTube API HTTP " + code;
+                    org.json.JSONObject error = root.optJSONObject("error");
+                    if (error != null && !error.optString("message", "").isEmpty()) message = error.optString("message");
+                    throw new IllegalStateException(message);
+                }
+
+                java.util.ArrayList<AudifySearchItemV673> results = new java.util.ArrayList<>();
+                org.json.JSONArray arr = root.optJSONArray("items");
+                if (arr != null) {
+                    for (int i=0; i<arr.length() && results.size()<20; i++) {
+                        org.json.JSONObject entry = arr.optJSONObject(i);
+                        if (entry == null) continue;
+                        org.json.JSONObject idObj = entry.optJSONObject("id");
+                        org.json.JSONObject snippet = entry.optJSONObject("snippet");
+                        if (idObj == null || snippet == null) continue;
+                        String videoId = idObj.optString("videoId", "");
+                        if (videoId.isEmpty()) continue;
+                        String title = audifyHtmlTextV673(snippet.optString("title", "Sans titre"));
+                        String artist = audifyHtmlTextV673(snippet.optString("channelTitle", "YouTube"));
+                        String thumbnail = "https://i.ytimg.com/vi/" + videoId + "/hqdefault.jpg";
+                        org.json.JSONObject thumbs = snippet.optJSONObject("thumbnails");
+                        if (thumbs != null) {
+                            org.json.JSONObject chosen = thumbs.optJSONObject("high");
+                            if (chosen == null) chosen = thumbs.optJSONObject("medium");
+                            if (chosen == null) chosen = thumbs.optJSONObject("default");
+                            if (chosen != null && !chosen.optString("url", "").isEmpty()) thumbnail = chosen.optString("url");
+                        }
+                        results.add(new AudifySearchItemV673(videoId, title, artist, thumbnail));
                     }
                 }
-                runOnUiThread(() -> renderAudifyNativeResultsV672(videos, query, generation));
+
+                final java.util.ArrayList<AudifySearchItemV673> finalResults = results;
+                runOnUiThread(() -> renderAudifyNativeResultsV672(finalResults, query, generation));
             } catch (Throwable error) {
                 String message = error.getMessage();
                 if (message == null || message.trim().isEmpty()) message = error.getClass().getSimpleName();
                 final String finalMessage = message;
                 runOnUiThread(() -> {
                     if (generation != audifySearchGenerationV672) return;
-                    showAudifySearchStatusV672("Erreur recherche YouTube native :\n" + finalMessage, true);
+                    showAudifySearchStatusV672("Erreur recherche YouTube :\n" + finalMessage, true);
                 });
+            } finally {
+                if (connection != null) connection.disconnect();
             }
         });
     }
@@ -175,7 +256,7 @@ const members=String.raw`
 main=main.replace(classMarker,classMarker+members);
 
 const submitMarker='audifyPendingSearchV671 = query;';
-if(!main.includes(submitMarker)) throw new Error('submitAudifyNativeSearchV671 introuvable pour V67.2');
+if(!main.includes(submitMarker)) throw new Error('submitAudifyNativeSearchV671 introuvable pour V67.3');
 main=main.replace(submitMarker, `${submitMarker}\n            runAudifyNativeSearchV672(query);`);
 
 const destroyMarker='    @Override\n    protected void onDestroy() {';
@@ -184,4 +265,4 @@ if(main.includes(destroyMarker) && !main.includes('audifySearchExecutorV672.shut
 }
 
 await writeFile(mainPath,main,'utf8');
-console.log('Audify Android V67.2 : moteur + résultats YouTube 100% natifs, sans WebView.');
+console.log('Audify Android V67.3 : recherche historique YouTube Data API restauree en natif.');
