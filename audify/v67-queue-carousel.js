@@ -5,9 +5,9 @@
   const PENDING_KEY='audify_queue_pending_v56';
   const FAVORITES_KEY='audify_favorites_v1';
   const MAX_QUEUE=100;
-  let lastKey='',lastCurrentId='';
+  let lastKey='',lastCurrentId='',selectedId='';
 
-  const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));
   const state=()=>{try{return typeof S!=='undefined'?S:null}catch{return null}};
   const current=()=>state()?.current||null;
   const playerView=()=>document.querySelector('#playerView');
@@ -32,6 +32,7 @@
     lastCurrentId=id;
     const before=readStore(),after=before.filter(x=>String(x.id)!==id);
     if(after.length!==before.length){writeStore(after);lastKey=''}
+    if(selectedId===id)selectedId='';
   }
 
   function manualQueue(){
@@ -81,17 +82,33 @@
       if(typeof playTrack==='function')playTrack(items[i],i);
       else if(typeof window.playTrack==='function')window.playTrack(items[i],i);
     }catch(e){console.error('[Audify V67 queue carousel]',e)}
+    selectedId='';
     setTimeout(()=>{consumeCurrent();lastKey='';sync()},80);
+  }
+
+  function selectOrPlay(id,button){
+    id=String(id||'');if(!id)return;
+    if(selectedId!==id){
+      selectedId=id;lastKey='';render(manualQueue());
+      requestAnimationFrame(()=>{
+        const row=document.querySelector('#v67MqRow');
+        const card=row?.querySelector('[data-v67-qid="'+CSS.escape(id)+'"]');
+        if(card)try{card.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'})}catch{}
+      });
+      return;
+    }
+    playStored(id);
   }
 
   function render(items){
     const sec=ensure();if(!sec)return;
     const view=playerView();
-    const key=items.map(x=>x.id).join('|');
+    if(selectedId&&!items.some(x=>String(x.id)===selectedId))selectedId='';
+    const key=items.map(x=>x.id).join('|')+'|selected:'+selectedId;
     if(!items.length){
       sec.hidden=true;
       view?.classList.remove('v67-has-manual-queue');
-      lastKey='';
+      selectedId='';lastKey='';
       return;
     }
     sec.hidden=false;
@@ -100,8 +117,11 @@
     lastKey=key;
     const count=sec.querySelector('#v67MqCount'),row=sec.querySelector('#v67MqRow');
     if(count)count.textContent=items.length+' titre'+(items.length>1?'s':'');
-    row.innerHTML=items.map((t,n)=>'<button type="button" class="v67-mq-card" data-v67-qid="'+esc(t.id)+'" aria-label="Lire '+esc(t.title||'ce titre')+'"><span class="v67-mq-order">'+String(n+1).padStart(2,'0')+'</span><img src="'+esc(t.thumbnail||'')+'" alt=""><b>'+esc(t.title||'Sans titre')+'</b><span>'+esc(t.artist||'YouTube')+'</span></button>').join('');
-    row.querySelectorAll('[data-v67-qid]').forEach(b=>b.addEventListener('click',()=>playStored(b.dataset.v67Qid)));
+    row.innerHTML=items.map((t,n)=>{
+      const active=String(t.id)===selectedId;
+      return '<button type="button" class="v67-mq-card'+(active?' is-selected':'')+'" data-v67-qid="'+esc(t.id)+'" aria-pressed="'+(active?'true':'false')+'" aria-label="'+(active?'Lire ':'Sélectionner ')+esc(t.title||'ce titre')+'"><span class="v67-mq-order">'+String(n+1).padStart(2,'0')+'</span><img src="'+esc(t.thumbnail||'')+'" alt=""><b>'+esc(t.title||'Sans titre')+'</b><span>'+esc(t.artist||'YouTube')+'</span></button>';
+    }).join('');
+    row.querySelectorAll('[data-v67-qid]').forEach(b=>b.addEventListener('click',()=>selectOrPlay(b.dataset.v67Qid,b)));
   }
 
   function sync(){
@@ -122,7 +142,7 @@
     },true);
     ensure();sync();setInterval(sync,240);
     const view=playerView();if(view)new MutationObserver(sync).observe(view,{attributes:true,attributeFilter:['hidden']});
-    window.AudifyManualQueueCarouselV67={refresh:()=>{lastKey='';sync()},items:manualQueue,clear:()=>{writeStore([]);lastKey='';sync()}};
+    window.AudifyManualQueueCarouselV67={refresh:()=>{lastKey='';sync()},items:manualQueue,clear:()=>{writeStore([]);selectedId='';lastKey='';sync()}};
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
