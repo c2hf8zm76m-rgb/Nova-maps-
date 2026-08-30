@@ -16,6 +16,10 @@
     el.classList.remove('show');void el.offsetWidth;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),1700);
   }
   function pulse(btn){btn.classList.remove('v56-added');void btn.offsetWidth;btn.classList.add('v56-added');setTimeout(()=>btn.classList.remove('v56-added'),620)}
+  function emitQueueAdded(track,mode){
+    const t=clean(track);if(!t)return;
+    try{window.dispatchEvent(new CustomEvent('audify:queue-added',{detail:{track:t,mode:mode||'active'}}))}catch{}
+  }
 
   function addActive(track){
     const s=state(),cur=current(),t=clean(track);if(!s||!cur||!t)return false;
@@ -33,8 +37,14 @@
   function add(track,btn){
     const t=clean(track);if(!t)return;
     pulse(btn);
-    if(current()&&addActive(t)){showToast(t,false);return}
-    let q=readPending().filter(x=>x.id!==t.id);q.push(t);writePending(q);showToast(t,true);
+    if(current()&&addActive(t)){
+      emitQueueAdded(t,'active');
+      showToast(t,false);
+      return;
+    }
+    let q=readPending().filter(x=>x.id!==t.id);q.push(t);writePending(q);
+    emitQueueAdded(t,'pending');
+    showToast(t,true);
   }
   function mergePending(){
     const cur=current();if(!cur)return;
