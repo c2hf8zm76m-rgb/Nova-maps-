@@ -14,6 +14,7 @@ await cp(audify, www, { recursive: true });
 await cp(path.join(root, 'native-android-bridge.js'), path.join(www, 'native-android-bridge.js'));
 await cp(path.join(root, 'manual-queue-ui-fix.js'), path.join(www, 'manual-queue-ui-fix.js'));
 await cp(path.join(root, 'remove-browser-install-ui.js'), path.join(www, 'remove-browser-install-ui.js'));
+await cp(path.join(root, 'native-search-v6711.js'), path.join(www, 'native-search-v6711.js'));
 
 // Android natif uniquement : aucun ancien Service Worker PWA ne doit pouvoir reprendre la main.
 const neutralizeServiceWorkers = async () => {
@@ -50,13 +51,13 @@ const jsPatches = [
 
 const source = path.join(audify, 'index-v21.html');
 let html = await readFile(source, 'utf8');
-html = html.replace(/<title>[^<]*<\/title>/i, '<title>Audify Android V67.0 • Search Reboot Stage 1</title>');
+html = html.replace(/<title>[^<]*<\/title>/i, '<title>Audify Android V67.1.1 • Native YouTube Search</title>');
 html = html.replace(
   /<meta name="viewport"[^>]*>/i,
   '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#070a0f">'
 );
 
-const runtimeGuard = `<script id="audify-android-runtime-guard-v670">
+const runtimeGuard = `<script id="audify-android-runtime-guard-v6711">
 (()=>{
   try{
     if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations){
@@ -70,30 +71,29 @@ const runtimeGuard = `<script id="audify-android-runtime-guard-v670">
 <\/script>`;
 html = html.replace('<head>', '<head>' + runtimeGuard);
 
-// V67.0 : l'ancienne recherche Web n'est plus utilisée. Elle reste cachée pour préserver
-// les dépendances historiques, mais tout ce que voit/touche l'utilisateur est désormais natif Android.
 const androidSearchCss = `
-<style id="audify-search-reboot-v670">
+<style id="audify-search-reboot-v6711">
 html,body{margin:0;background:#070a0f!important;color:#fff}
 body{min-height:100%}
 .search-wrap{display:none!important;visibility:hidden!important;pointer-events:none!important}
 </style>`;
 
 const css = [
-  ...cssPatches.map(v => `<link rel="stylesheet" href="./v${v}-patch.css?v=android-v670">`),
+  ...cssPatches.map(v => `<link rel="stylesheet" href="./v${v}-patch.css?v=android-v6711">`),
   androidSearchCss
 ].join('');
 html = html.replace('</head>', css + '</head>');
 
 const scripts = [
-  ...jsPatches.map(v => `<script src="./v${v}-patch.js?v=android-v670"><\/script>`),
-  '<script src="./native-android-bridge.js?v=android-v670-native"><\/script>',
-  '<script src="./manual-queue-ui-fix.js?v=android-v670-manual-queue"><\/script>',
-  '<script src="./remove-browser-install-ui.js?v=android-v670-no-browser-install"><\/script>',
-  '<script src="./google-sync-config.js?v=android-v670"><\/script>',
-  '<script src="./v66-patch.js?v=android-v670"><\/script>'
+  ...jsPatches.map(v => `<script src="./v${v}-patch.js?v=android-v6711"><\/script>`),
+  '<script src="./native-android-bridge.js?v=android-v6711-native"><\/script>',
+  '<script src="./manual-queue-ui-fix.js?v=android-v6711-manual-queue"><\/script>',
+  '<script src="./remove-browser-install-ui.js?v=android-v6711-no-browser-install"><\/script>',
+  '<script src="./google-sync-config.js?v=android-v6711"><\/script>',
+  '<script src="./v66-patch.js?v=android-v6711"><\/script>',
+  '<script src="./native-search-v6711.js?v=android-v6711-search"><\/script>'
 ].join('');
 html = html.replace('</body>', scripts + '</body>');
 
 await writeFile(path.join(www, 'index.html'), html, 'utf8');
-console.log('Audify Android V67.0 : ancienne barre Web cachée, prêt pour la nouvelle barre Android native.');
+console.log('Audify Android V67.1.1 : barre native + fonction YouTube dédiée AudifyNativeSearch.');
