@@ -1,8 +1,8 @@
 {
   "name": "audify-android",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "private": true,
-  "description": "Audify Android V67.1.2 separated native search button with javascript URL bridge",
+  "description": "Audify Android V67.1.3 inverted WebView-to-native search bridge",
   "scripts": {
     "prepare:web": "node scripts/prepare-web.mjs",
     "android:add": "npx cap add android",
