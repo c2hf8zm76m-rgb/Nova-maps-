@@ -16,9 +16,9 @@ await cp(path.join(root, 'manual-queue-ui-fix.js'), path.join(www, 'manual-queue
 await cp(path.join(root, 'remove-browser-install-ui.js'), path.join(www, 'remove-browser-install-ui.js'));
 await cp(path.join(root, 'search-dom-recovery.js'), path.join(www, 'search-dom-recovery.js'));
 
-// V66.6 : l'APK est un paquet natif, pas une PWA. Plusieurs anciens patchs V53/V55/V56/V57/V58/V59
-// réenregistraient chacun leur propre Service Worker et pouvaient continuer à servir un ancien shell
-// après l'installation d'un nouvel APK. On neutralise TOUS les registerSW() dans les copies Android.
+// V66.6 : l'APK est natif, pas une PWA. Les anciens patchs ne doivent jamais enregistrer
+// de Service Worker dans Android. On neutralise à la fois registerSW() ET les petits fichiers
+// autonomes comme v61-register.js, puis on refuse le build s'il reste une seule inscription.
 const neutralizeServiceWorkers = async () => {
   const names = await readdir(www);
   const offenders = [];
@@ -27,10 +27,17 @@ const neutralizeServiceWorkers = async () => {
     const p = path.join(www, name);
     let src = await readFile(p, 'utf8');
     const original = src;
+
     src = src.replace(
       /function registerSW\(\)\{[\s\S]*?\}\s*(?=function boot\(\)\{)/g,
       'function registerSW(){}\n  '
     );
+
+    // Les registrars autonomes ne contiennent aucune fonctionnalité Audify utile.
+    if (/serviceWorker\.register\(/.test(src) && /(?:^|[-_.])register(?:[-_.]|\.js$)/i.test(name)) {
+      src = "(()=>{'use strict';/* Android native: Service Worker intentionally disabled. */})();\n";
+    }
+
     if (src !== original) await writeFile(p, src, 'utf8');
     if (src.includes('serviceWorker.register(')) offenders.push(name);
   }
@@ -56,8 +63,6 @@ html = html.replace(
   '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#070a0f">'
 );
 
-// Défense secondaire : même si une vieille page est encore contrôlée au premier démarrage,
-// le Java natif V66.6 fait la purge avant de recharger. Ce script empêche toute résurgence ensuite.
 const runtimeGuard = `<script id="audify-android-runtime-guard-v666">
 (()=>{
   try{
@@ -120,4 +125,4 @@ const scripts = [
 html = html.replace('</body>', scripts + '</body>');
 
 await writeFile(path.join(www, 'index.html'), html, 'utf8');
-console.log('Audify Android V66.6 : PWA/SW neutralisés + contrat #q restauré.');
+console.log('Audify Android V66.6 : zéro Service Worker + contrat #q restauré.');
