@@ -1,16 +1,21 @@
-name: Build Audify Android APK
+name: Build Audify Android V67.5
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
     paths:
+      - 'audify/**'
       - 'audify-android/**'
       - '!audify-android/releases/**'
       - '.github/workflows/audify-android-build.yml'
-  workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: audify-android-release-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -19,43 +24,68 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
-      - name: Set up Android SDK
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android platform
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Install Audify Android dependencies
+        working-directory: audify-android
+        run: npm install
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
+      - name: Prepare Audify web UI
+        working-directory: audify-android
+        run: npm run prepare:web
+
+      - name: Generate Capacitor Android project
+        working-directory: audify-android
+        run: npx cap add android
+
+      - name: Sync Capacitor Android
+        working-directory: audify-android
+        run: npx cap sync android
+
+      - name: Apply Audify native Media3 engine
+        working-directory: audify-android
+        run: npm run android:patch
 
       - name: Build debug APK
-        run: gradle -p audify-android assembleDebug --stacktrace
-
-      - name: Prepare APK
+        working-directory: audify-android/android
         run: |
-          cp audify-android/app/build/outputs/apk/debug/app-debug.apk Audify-V58.apk
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Prepare Audify V67.5 APK
+        run: |
           mkdir -p audify-android/releases
-          cp Audify-V58.apk audify-android/releases/Audify-V58.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V67.5.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V58-APK
-          path: Audify-V58.apk
+          name: Audify-V67.5-APK
+          path: audify-android/releases/Audify-V67.5.apk
           if-no-files-found: error
+          retention-days: 30
 
       - name: Publish APK in repository
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V58.apk
-          git diff --cached --quiet || git commit -m 'Publish Audify V58 APK'
-          git push
+          git add -f audify-android/releases/Audify-V67.5.apk
+          if git diff --cached --quiet; then
+            echo 'APK unchanged'
+            exit 0
+          fi
+          git commit -m 'Publish Audify V67.5 APK'
+          git pull --rebase origin main
+          git push origin HEAD:main
