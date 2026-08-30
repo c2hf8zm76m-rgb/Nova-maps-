@@ -191,13 +191,14 @@
       const t=e?.detail?.track;
       if(t){remember(t);lastKey='';setTimeout(sync,0)}
     });
+    window.addEventListener('audify:external-play-intent',()=>markExternalIntent());
 
     document.addEventListener('click',e=>{
       const target=e.target;
       const queueBtn=target.closest('.v56-add-queue,.v57-add-queue');
       if(queueBtn){const t=trackFromQueueButton(queueBtn);if(t){remember(t);setTimeout(sync,0)}return}
       if(target.closest('#v67ManualQueue'))return;
-      if(target.closest('[data-p],[data-fav-play],#prev,#next'))markExternalIntent();
+      if(target.closest('[data-p],[data-play],[data-fav-play],.v48-recent-card,.v50-sheet-item,#prev,#next'))markExternalIntent();
     },true);
 
     document.addEventListener('touchstart',e=>{
