@@ -14,11 +14,8 @@ await cp(audify, www, { recursive: true });
 await cp(path.join(root, 'native-android-bridge.js'), path.join(www, 'native-android-bridge.js'));
 await cp(path.join(root, 'manual-queue-ui-fix.js'), path.join(www, 'manual-queue-ui-fix.js'));
 await cp(path.join(root, 'remove-browser-install-ui.js'), path.join(www, 'remove-browser-install-ui.js'));
-await cp(path.join(root, 'search-dom-recovery.js'), path.join(www, 'search-dom-recovery.js'));
 
-// V66.6 : l'APK est natif, pas une PWA. Les anciens patchs ne doivent jamais enregistrer
-// de Service Worker dans Android. On neutralise à la fois registerSW() ET les petits fichiers
-// autonomes comme v61-register.js, puis on refuse le build s'il reste une seule inscription.
+// Android natif uniquement : aucun ancien Service Worker PWA ne doit pouvoir reprendre la main.
 const neutralizeServiceWorkers = async () => {
   const names = await readdir(www);
   const offenders = [];
@@ -27,17 +24,13 @@ const neutralizeServiceWorkers = async () => {
     const p = path.join(www, name);
     let src = await readFile(p, 'utf8');
     const original = src;
-
     src = src.replace(
       /function registerSW\(\)\{[\s\S]*?\}\s*(?=function boot\(\)\{)/g,
       'function registerSW(){}\n  '
     );
-
-    // Les registrars autonomes ne contiennent aucune fonctionnalité Audify utile.
     if (/serviceWorker\.register\(/.test(src) && /(?:^|[-_.])register(?:[-_.]|\.js$)/i.test(name)) {
       src = "(()=>{'use strict';/* Android native: Service Worker intentionally disabled. */})();\n";
     }
-
     if (src !== original) await writeFile(p, src, 'utf8');
     if (src.includes('serviceWorker.register(')) offenders.push(name);
   }
@@ -57,13 +50,13 @@ const jsPatches = [
 
 const source = path.join(audify, 'index-v21.html');
 let html = await readFile(source, 'utf8');
-html = html.replace(/<title>[^<]*<\/title>/i, '<title>Audify Android V66.6 • Search Runtime Reset</title>');
+html = html.replace(/<title>[^<]*<\/title>/i, '<title>Audify Android V67.0 • Search Reboot Stage 1</title>');
 html = html.replace(
   /<meta name="viewport"[^>]*>/i,
   '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#070a0f">'
 );
 
-const runtimeGuard = `<script id="audify-android-runtime-guard-v666">
+const runtimeGuard = `<script id="audify-android-runtime-guard-v670">
 (()=>{
   try{
     if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations){
@@ -77,52 +70,30 @@ const runtimeGuard = `<script id="audify-android-runtime-guard-v666">
 <\/script>`;
 html = html.replace('<head>', '<head>' + runtimeGuard);
 
+// V67.0 : l'ancienne recherche Web n'est plus utilisée. Elle reste cachée pour préserver
+// les dépendances historiques, mais tout ce que voit/touche l'utilisateur est désormais natif Android.
 const androidSearchCss = `
-<style id="audify-android-search-root-v666">
+<style id="audify-search-reboot-v670">
 html,body{margin:0;background:#070a0f!important;color:#fff}
 body{min-height:100%}
-.search-wrap{
-  left:9px!important;
-  right:9px!important;
-  top:10px!important;
-  width:auto!important;
-  transform:none!important;
-  z-index:50!important;
-  pointer-events:auto!important;
-}
-.search{
-  pointer-events:auto!important;
-  transform:none!important;
-  backdrop-filter:none!important;
-  -webkit-backdrop-filter:none!important;
-  background:rgba(19,25,34,.98)!important;
-}
-.search input,#q{
-  pointer-events:auto!important;
-  touch-action:manipulation!important;
-  -webkit-user-select:text!important;
-  user-select:text!important;
-  cursor:text!important;
-  caret-color:#fff!important;
-}
+.search-wrap{display:none!important;visibility:hidden!important;pointer-events:none!important}
 </style>`;
 
 const css = [
-  ...cssPatches.map(v => `<link rel="stylesheet" href="./v${v}-patch.css?v=android-v666">`),
+  ...cssPatches.map(v => `<link rel="stylesheet" href="./v${v}-patch.css?v=android-v670">`),
   androidSearchCss
 ].join('');
 html = html.replace('</head>', css + '</head>');
 
 const scripts = [
-  ...jsPatches.map(v => `<script src="./v${v}-patch.js?v=android-v666"><\/script>`),
-  '<script src="./native-android-bridge.js?v=android-v666-native"><\/script>',
-  '<script src="./manual-queue-ui-fix.js?v=android-v666-manual-queue"><\/script>',
-  '<script src="./remove-browser-install-ui.js?v=android-v666-no-browser-install"><\/script>',
-  '<script src="./google-sync-config.js?v=android-v666"><\/script>',
-  '<script src="./v66-patch.js?v=android-v666"><\/script>',
-  '<script src="./search-dom-recovery.js?v=android-v666-search-recovery"><\/script>'
+  ...jsPatches.map(v => `<script src="./v${v}-patch.js?v=android-v670"><\/script>`),
+  '<script src="./native-android-bridge.js?v=android-v670-native"><\/script>',
+  '<script src="./manual-queue-ui-fix.js?v=android-v670-manual-queue"><\/script>',
+  '<script src="./remove-browser-install-ui.js?v=android-v670-no-browser-install"><\/script>',
+  '<script src="./google-sync-config.js?v=android-v670"><\/script>',
+  '<script src="./v66-patch.js?v=android-v670"><\/script>'
 ].join('');
 html = html.replace('</body>', scripts + '</body>');
 
 await writeFile(path.join(www, 'index.html'), html, 'utf8');
-console.log('Audify Android V66.6 : zéro Service Worker + contrat #q restauré.');
+console.log('Audify Android V67.0 : ancienne barre Web cachée, prêt pour la nouvelle barre Android native.');
