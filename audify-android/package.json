@@ -1,13 +1,13 @@
 {
   "name": "audify-android",
-  "version": "0.6.9",
+  "version": "0.6.10",
   "private": true,
-  "description": "Audify Android V67.7 native player Activity with ExoPlayer background engine",
+  "description": "Audify Android V67.8 native player with boolean Play Pause and native seek timeline",
   "scripts": {
     "prepare:web": "node scripts/prepare-web.mjs",
     "android:add": "npx cap add android",
     "android:sync": "npm run prepare:web && npx cap sync android",
-    "android:patch": "node scripts/patch-android.mjs && node scripts/v64-upgrade.mjs && node scripts/v641-fix.mjs && node scripts/v644-system-player.mjs && node scripts/v663-native-insets.mjs && node scripts/v670-native-search.mjs && node scripts/v671-native-search-results.mjs && node scripts/v672-native-search-engine.mjs && node scripts/v674-clickable-results.mjs && node scripts/v66-google-drive-sync.mjs && node scripts/v675-umihi-engine.mjs && node scripts/v677-native-player-page.mjs"
+    "android:patch": "node scripts/patch-android.mjs && node scripts/v64-upgrade.mjs && node scripts/v641-fix.mjs && node scripts/v644-system-player.mjs && node scripts/v663-native-insets.mjs && node scripts/v670-native-search.mjs && node scripts/v671-native-search-results.mjs && node scripts/v672-native-search-engine.mjs && node scripts/v674-clickable-results.mjs && node scripts/v66-google-drive-sync.mjs && node scripts/v675-umihi-engine.mjs && node scripts/v677-native-player-page.mjs && node scripts/v678-native-toggle-timeline.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
