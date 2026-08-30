@@ -16,7 +16,7 @@ if(!main.includes('import android.view.inputmethod.EditorInfo;')){
 }
 
 const classMarker='public class MainActivity extends BridgeActivity {';
-if(!main.includes(classMarker))throw new Error('Classe MainActivity introuvable pour V67.1');
+if(!main.includes(classMarker))throw new Error('Classe MainActivity introuvable pour V67.1.1');
 
 const members=String.raw`
     private Button audifyNativeSearchButtonV671;
@@ -31,13 +31,21 @@ const members=String.raw`
             WebView webView = getBridge().getWebView();
             String quoted = JSONObject.quote(query);
             String js = "(function(q){try{" +
-                "var old=document.getElementById('q');" +
-                "if(!old){old=document.createElement('input');old.id='q';old.type='hidden';old.style.display='none';document.body.appendChild(old);}" +
-                "old.value=q;" +
-                "if(typeof window.search==='function'){window.search();return 'ok';}" +
-                "return 'missing-search';" +
-                "}catch(e){return 'error:'+String((e&&e.message)||e);}})(" + quoted + ");";
-            webView.evaluateJavascript(js, null);
+                "if(typeof window.AudifyNativeSearch!=='function'){" +
+                    "var r=document.getElementById('results');" +
+                    "var rv=document.getElementById('resultsView');" +
+                    "if(rv)rv.hidden=false;" +
+                    "if(r){r.className='empty';r.textContent='Pont de recherche indisponible.';}" +
+                    "return 'missing-native-search';" +
+                "}" +
+                "window.AudifyNativeSearch(q);" +
+                "return 'started';" +
+                "}catch(e){" +
+                    "var r=document.getElementById('results');" +
+                    "if(r){r.className='empty';r.textContent='Erreur pont natif: '+String((e&&e.message)||e);}" +
+                    "return 'error';" +
+                "}})(" + quoted + ");";
+            webView.post(() -> webView.evaluateJavascript(js, null));
 
             input.clearFocus();
             InputMethodManager imm=(InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);
@@ -96,8 +104,8 @@ const members=String.raw`
 main=main.replace(classMarker,classMarker+members);
 
 const marker='installAudifyNativeSearchV670();';
-if(!main.includes(marker))throw new Error('Installation native V67.0 introuvable pour V67.1');
-main=main.replace(marker,`${marker}\n        // V67.1 : le champ natif pilote désormais le moteur YouTube Web existant.\n        upgradeAudifyNativeSearchV671();`);
+if(!main.includes(marker))throw new Error('Installation native V67.0 introuvable pour V67.1.1');
+main=main.replace(marker,`${marker}\n        // V67.1.1 : appel direct vers window.AudifyNativeSearch(query).\n        upgradeAudifyNativeSearchV671();`);
 
 await writeFile(mainPath,main,'utf8');
-console.log('Audify Android V67.1 : recherche native -> moteur YouTube branchée.');
+console.log('Audify Android V67.1.1 : bouton natif -> AudifyNativeSearch(query) dédié.');
