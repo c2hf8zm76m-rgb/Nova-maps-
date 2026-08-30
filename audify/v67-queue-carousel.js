@@ -201,7 +201,7 @@
     },true);
 
     document.addEventListener('touchstart',e=>{
-      if(e.target.closest('#v67ManualQueue')){touchStart=null;return}
+      if(!e.target.closest('#playerView')||e.target.closest('#v67ManualQueue')){touchStart=null;return}
       const t=e.touches?.[0];touchStart=t?{x:t.clientX,y:t.clientY}:null;
     },{passive:true,capture:true});
     document.addEventListener('touchend',e=>{
