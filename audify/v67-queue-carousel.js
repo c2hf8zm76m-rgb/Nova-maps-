@@ -7,7 +7,7 @@
   const MAX_QUEUE=100;
   let lastKey='',lastCurrentId='',selectedId='';
 
-  const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));
+  const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const state=()=>{try{return typeof S!=='undefined'?S:null}catch{return null}};
   const current=()=>state()?.current||null;
   const playerView=()=>document.querySelector('#playerView');
@@ -86,13 +86,13 @@
     setTimeout(()=>{consumeCurrent();lastKey='';sync()},80);
   }
 
-  function selectOrPlay(id,button){
+  function selectOrPlay(id){
     id=String(id||'');if(!id)return;
     if(selectedId!==id){
       selectedId=id;lastKey='';render(manualQueue());
       requestAnimationFrame(()=>{
         const row=document.querySelector('#v67MqRow');
-        const card=row?.querySelector('[data-v67-qid="'+CSS.escape(id)+'"]');
+        const card=[...(row?.querySelectorAll('[data-v67-qid]')||[])].find(el=>String(el.dataset.v67Qid)===id);
         if(card)try{card.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'})}catch{}
       });
       return;
@@ -121,7 +121,7 @@
       const active=String(t.id)===selectedId;
       return '<button type="button" class="v67-mq-card'+(active?' is-selected':'')+'" data-v67-qid="'+esc(t.id)+'" aria-pressed="'+(active?'true':'false')+'" aria-label="'+(active?'Lire ':'Sélectionner ')+esc(t.title||'ce titre')+'"><span class="v67-mq-order">'+String(n+1).padStart(2,'0')+'</span><img src="'+esc(t.thumbnail||'')+'" alt=""><b>'+esc(t.title||'Sans titre')+'</b><span>'+esc(t.artist||'YouTube')+'</span></button>';
     }).join('');
-    row.querySelectorAll('[data-v67-qid]').forEach(b=>b.addEventListener('click',()=>selectOrPlay(b.dataset.v67Qid,b)));
+    row.querySelectorAll('[data-v67-qid]').forEach(b=>b.addEventListener('click',()=>selectOrPlay(b.dataset.v67Qid)));
   }
 
   function sync(){
