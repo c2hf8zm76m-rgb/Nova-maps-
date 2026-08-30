@@ -12,6 +12,7 @@ await rm(www, { recursive: true, force: true });
 await mkdir(www, { recursive: true });
 await cp(audify, www, { recursive: true });
 await cp(path.join(root, 'native-android-bridge.js'), path.join(www, 'native-android-bridge.js'));
+await cp(path.join(root, 'native-open-player-v676.js'), path.join(www, 'native-open-player-v676.js'));
 await cp(path.join(root, 'manual-queue-ui-fix.js'), path.join(www, 'manual-queue-ui-fix.js'));
 await cp(path.join(root, 'remove-browser-install-ui.js'), path.join(www, 'remove-browser-install-ui.js'));
 await cp(path.join(root, 'native-search-v6711.js'), path.join(www, 'native-search-v6711.js'));
@@ -46,18 +47,18 @@ const cssPatches = [
   22,23,24,25,26,27,28,29,30,31,32,33,34,35,38,39,40,45,46,47,48,49,50,51,53,54,55,56,57,58,65,66
 ];
 const jsPatches = [
-  22,23,24,25,26,27,28,29,30,31,32,33,34,35,44,45,46,47,48,49,50,51,53,54,55,56,57,58,59,65
+  22,23,24,25,26,27,28,29,30,31,32,33,34,35,44,45,46,47,48,49,50,51,53,54,55,56,57,58,59,60,65
 ];
 
 const source = path.join(audify, 'index-v21.html');
 let html = await readFile(source, 'utf8');
-html = html.replace(/<title>[^<]*<\/title>/i, '<title>Audify Android V67.1.1 • Native YouTube Search</title>');
+html = html.replace(/<title>[^<]*<\/title>/i, '<title>Audify Android V67.6 • Full Player + Media3</title>');
 html = html.replace(
   /<meta name="viewport"[^>]*>/i,
   '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#070a0f">'
 );
 
-const runtimeGuard = `<script id="audify-android-runtime-guard-v6711">
+const runtimeGuard = `<script id="audify-android-runtime-guard-v676">
 (()=>{
   try{
     if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations){
@@ -72,28 +73,36 @@ const runtimeGuard = `<script id="audify-android-runtime-guard-v6711">
 html = html.replace('<head>', '<head>' + runtimeGuard);
 
 const androidSearchCss = `
-<style id="audify-search-reboot-v6711">
+<style id="audify-search-reboot-v676">
 html,body{margin:0;background:#070a0f!important;color:#fff}
 body{min-height:100%}
 .search-wrap{display:none!important;visibility:hidden!important;pointer-events:none!important}
+/* V67.6 uses the same horizontal queue UI as the current Audify web player. */
+#v64QueueRail{display:none!important}
 </style>`;
 
 const css = [
-  ...cssPatches.map(v => `<link rel="stylesheet" href="./v${v}-patch.css?v=android-v6711">`),
+  ...cssPatches.map(v => `<link rel="stylesheet" href="./v${v}-patch.css?v=android-v676">`),
+  '<link rel="stylesheet" href="./v67-artist-images.css?v=android-v676">',
+  '<link rel="stylesheet" href="./v67-queue-carousel.css?v=android-v676">',
   androidSearchCss
 ].join('');
 html = html.replace('</head>', css + '</head>');
 
 const scripts = [
-  ...jsPatches.map(v => `<script src="./v${v}-patch.js?v=android-v6711"><\/script>`),
-  '<script src="./native-android-bridge.js?v=android-v6711-native"><\/script>',
-  '<script src="./manual-queue-ui-fix.js?v=android-v6711-manual-queue"><\/script>',
-  '<script src="./remove-browser-install-ui.js?v=android-v6711-no-browser-install"><\/script>',
-  '<script src="./google-sync-config.js?v=android-v6711"><\/script>',
-  '<script src="./v66-patch.js?v=android-v6711"><\/script>',
-  '<script src="./native-search-v6711.js?v=android-v6711-search"><\/script>'
+  ...jsPatches.map(v => `<script src="./v${v}-patch.js?v=android-v676"><\/script>`),
+  '<script src="./google-sync-config.js?v=android-v676"><\/script>',
+  '<script src="./v66-patch.js?v=android-v676"><\/script>',
+  '<script src="./v67-artist-images.js?v=android-v676"><\/script>',
+  '<script src="./v67-queue-carousel.js?v=android-v676"><\/script>',
+  '<script src="./v67-queue-swipe-order.js?v=android-v676"><\/script>',
+  '<script src="./native-android-bridge.js?v=android-v676-native"><\/script>',
+  '<script src="./native-open-player-v676.js?v=android-v676-open-player"><\/script>',
+  '<script src="./manual-queue-ui-fix.js?v=android-v676-manual-queue"><\/script>',
+  '<script src="./remove-browser-install-ui.js?v=android-v676-no-browser-install"><\/script>',
+  '<script src="./native-search-v6711.js?v=android-v676-search"><\/script>'
 ].join('');
 html = html.replace('</body>', scripts + '</body>');
 
 await writeFile(path.join(www, 'index.html'), html, 'utf8');
-console.log('Audify Android V67.1.1 : barre native + fonction YouTube dédiée AudifyNativeSearch.');
+console.log('Audify Android V67.6 : interface V67 complete + lecteur natif Media3 + ouverture automatique du player.');
