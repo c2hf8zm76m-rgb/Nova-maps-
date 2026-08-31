@@ -79,8 +79,8 @@ home=replaceRequired(
   'largeur mini lecteur'
 );
 
-const helperMarker='    private LinearLayout.LayoutParams weighted() {';
-if(!home.includes(helperMarker)) throw new Error('V68.10.3 helper Home introuvable');
+const helperMarker='    private void openSearch(){';
+if(!home.includes(helperMarker)) throw new Error('V68.10.3 point openSearch Home introuvable');
 const helper=String.raw`    private boolean searchOpening=false;
 
     private void openSearchAnimated(View searchBar){
