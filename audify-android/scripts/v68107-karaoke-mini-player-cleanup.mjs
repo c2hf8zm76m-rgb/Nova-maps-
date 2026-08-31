@@ -16,17 +16,22 @@ if(!src.includes('import android.view.View;')){
   src=src.replace('import android.view.Gravity;','import android.view.Gravity;\nimport android.view.View;');
 }
 
-// Conserver la miniature du morceau pour le mini-lecteur Karaoké.
+// Récupérer la pochette transmise par le grand lecteur, quelle que soit la mise en forme de onCreate.
 if(!src.includes('String thumbnail=in==null?"":safe(in.getStringExtra("thumbnail"));')){
-  src=src.replace(
-    '        videoId=in==null?"":safe(in.getStringExtra("videoId"));',
-    '        videoId=in==null?"":safe(in.getStringExtra("videoId"));\n        String thumbnail=in==null?"":safe(in.getStringExtra("thumbnail"));'
-  );
+  const videoNeedle='videoId=in==null?"":safe(in.getStringExtra("videoId"));';
+  if(!src.includes(videoNeedle)) throw new Error('V68.10.7 videoId karaoke introuvable');
+  src=src.replace(videoNeedle,videoNeedle+' String thumbnail=in==null?"":safe(in.getStringExtra("thumbnail"));');
 }
 
-// Bouton de sortie : une vraie croix + Lecteur.
-src=src.replace('        Button back=smallButton("‹ Lecteur");','        Button back=smallButton("✕  Lecteur");');
-src=src.replace('        header.addView(back,new LinearLayout.LayoutParams(dp(112),dp(48)));',String.raw`        GradientDrawable backBg=new GradientDrawable(
+// Bouton fermeture : une croix + Lecteur, plus cohérent qu'une flèche retour.
+const backNeedle='Button back=smallButton("‹ Lecteur");';
+if(!src.includes(backNeedle)) throw new Error('V68.10.7 bouton Lecteur introuvable');
+src=src.replace(backNeedle,'Button back=smallButton("✕  Lecteur");');
+
+// Le bouton actuel fait 104x46 dans le layout V68.10.4+ : on le rend un peu plus confortable et glass.
+const backAdd='header.addView(back,new LinearLayout.LayoutParams(dp(104),dp(46)));';
+if(src.includes(backAdd)){
+  src=src.replace(backAdd,String.raw`GradientDrawable backBg=new GradientDrawable(
             GradientDrawable.Orientation.TL_BR,
             new int[]{Color.argb(185,56,66,82),Color.argb(150,28,35,47)}
         );
@@ -35,28 +40,30 @@ src=src.replace('        header.addView(back,new LinearLayout.LayoutParams(dp(11
         back.setBackground(backBg);
         back.setTextSize(14f);
         back.setElevation(dp(5));
-        header.addView(back,new LinearLayout.LayoutParams(dp(132),dp(48)));`);
+        header.addView(back,new LinearLayout.LayoutParams(dp(132),dp(46)));`);
+}
 
-// Les mentions KARAOKÉ AUDIFY / LRCLIB restent techniquement disponibles pour le moteur,
-// mais ne prennent plus la moindre place visuelle.
-src=src.replace(
-  '        modeView=text("PAROLES AUDIFY",12f,true,Color.rgb(168,255,63));',
-  '        modeView=text("PAROLES AUDIFY",12f,true,Color.rgb(168,255,63));\n        modeView.setVisibility(View.GONE);'
-);
-src=src.replace(
-  '        statusView=text("Recherche intelligente des paroles…",13f,false,Color.rgb(165,175,188));',
-  '        statusView=text("Recherche intelligente des paroles…",13f,false,Color.rgb(165,175,188));\n        statusView.setVisibility(View.GONE);'
-);
+// Suppression totale du panneau “KARAOKÉ AUDIFY / Synchronisées · LRCLIB”.
+// On conserve seulement les deux TextView invisibles car le moteur de lyrics les met encore à jour.
+const heroStart=src.indexOf('LinearLayout hero=new LinearLayout(this);');
+const scrollStart=src.indexOf('scroll=new ScrollView(this);',heroStart);
+if(heroStart<0||scrollStart<0) throw new Error('V68.10.7 panneau karaoke introuvable');
+const hiddenMeta=String.raw`modeView=text("PAROLES AUDIFY",11.5f,true,Color.rgb(168,255,63));
+        modeView.setVisibility(View.GONE);
+        statusView=text("",13f,false,Color.TRANSPARENT);
+        statusView.setVisibility(View.GONE);
+        `;
+src=src.slice(0,heroStart)+hiddenMeta+src.slice(scrollStart);
 
-// Plus d’espace vertical utile pour les paroles.
-src=src.replace('        page.setPadding(dp(18),dp(12),dp(18),dp(154));','        page.setPadding(dp(18),dp(12),dp(18),dp(136));');
+// Conserver assez de marge pour le mini-player sans gaspiller l'espace des paroles.
+src=src.replace('page.setPadding(dp(16),dp(10),dp(16),dp(134));','page.setPadding(dp(16),dp(10),dp(16),dp(138));');
 
-// Remplace le grand lecteur Karaoké par le même langage visuel que le mini-player Home.
-const controlsStart=src.indexOf('        LinearLayout controls=new LinearLayout(this);');
-const setContent=src.indexOf('        setContentView(root);',controlsStart);
+// Remplacer le lecteur Karaoke spécial par le mini-lecteur Audify Home-style.
+const controlsStart=src.indexOf('LinearLayout controls=new LinearLayout(this);');
+const setContent=src.indexOf('setContentView(root);',controlsStart);
 if(controlsStart<0||setContent<0) throw new Error('V68.10.7 bloc lecteur karaoke introuvable');
 
-const mini=String.raw`        LinearLayout miniPlayer=new LinearLayout(this);
+const mini=String.raw`LinearLayout miniPlayer=new LinearLayout(this);
         miniPlayer.setOrientation(LinearLayout.VERTICAL);
         miniPlayer.setPadding(dp(11),dp(9),dp(11),dp(7));
         GradientDrawable miniGlass=new GradientDrawable(
@@ -90,9 +97,11 @@ const mini=String.raw`        LinearLayout miniPlayer=new LinearLayout(this);
         miniInfo.setPadding(dp(11),0,dp(8),0);
         miniInfo.setOnClickListener(v->finish());
         TextView miniTitle=text(resolvedMeta.title,15.5f,true,Color.WHITE);
-        miniTitle.setMaxLines(1); miniTitle.setEllipsize(TextUtils.TruncateAt.END);
+        miniTitle.setMaxLines(1);
+        miniTitle.setEllipsize(TextUtils.TruncateAt.END);
         TextView miniArtist=text(resolvedMeta.artist,12.5f,false,Color.rgb(190,199,212));
-        miniArtist.setMaxLines(1); miniArtist.setEllipsize(TextUtils.TruncateAt.END);
+        miniArtist.setMaxLines(1);
+        miniArtist.setEllipsize(TextUtils.TruncateAt.END);
         miniInfo.addView(miniTitle,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(29)));
         miniInfo.addView(miniArtist,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(23)));
         miniTop.addView(miniInfo,new LinearLayout.LayoutParams(0,dp(58),1f));
@@ -101,7 +110,7 @@ const mini=String.raw`        LinearLayout miniPlayer=new LinearLayout(this);
         toggle.setTextSize(20f);
         toggle.setElevation(dp(9));
         toggle.setOnClickListener(v->{
-            try{ startService(new Intent(this,AudifyPlaybackService.class).setAction(AudifyPlaybackService.ACTION_TOGGLE)); }catch(Exception ignored){}
+            try{startService(new Intent(this,AudifyPlaybackService.class).setAction(AudifyPlaybackService.ACTION_TOGGLE));}catch(Exception ignored){}
             handler.postDelayed(this::refresh,70L);
         });
         miniTop.addView(toggle,new LinearLayout.LayoutParams(dp(56),dp(56)));
@@ -133,22 +142,24 @@ const mini=String.raw`        LinearLayout miniPlayer=new LinearLayout(this);
         FrameLayout.LayoutParams miniLp=new FrameLayout.LayoutParams(miniWidth,dp(112),Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);
         miniLp.bottomMargin=dp(18);
         root.addView(miniPlayer,miniLp);
-
-`;
+        `;
 src=src.slice(0,controlsStart)+mini+src.slice(setContent);
 
-// Chargeur ultra-léger pour la pochette du mini-player.
+// Charge la pochette du morceau dans le mini-player.
 if(!src.includes('private void loadMiniArtwork(ImageView target,String raw)')){
-  const marker='    private String pathPart(String s) throws Exception {';
-  if(!src.includes(marker)) throw new Error('V68.10.7 helper marker introuvable');
-  const helper=String.raw`    private void loadMiniArtwork(ImageView target,String raw){
+  const marker='private String pathPart(String s) throws Exception {';
+  const markerIndex=src.indexOf(marker);
+  if(markerIndex<0) throw new Error('V68.10.7 helper marker introuvable');
+  const helper=String.raw`private void loadMiniArtwork(ImageView target,String raw){
         String url=safe(raw);
         if(url.isEmpty()||target==null) return;
         new Thread(()->{
             HttpURLConnection c=null;
             try{
                 c=(HttpURLConnection)new URL(url).openConnection();
-                c.setConnectTimeout(6000); c.setReadTimeout(7000); c.setUseCaches(true);
+                c.setConnectTimeout(6000);
+                c.setReadTimeout(7000);
+                c.setUseCaches(true);
                 try(InputStream in=c.getInputStream()){
                     final android.graphics.Bitmap bmp=android.graphics.BitmapFactory.decodeStream(in);
                     if(bmp!=null) runOnUiThread(()->target.setImageBitmap(bmp));
@@ -156,10 +167,9 @@ if(!src.includes('private void loadMiniArtwork(ImageView target,String raw)')){
             }catch(Exception ignored){}finally{if(c!=null)c.disconnect();}
         },"AudifyKaraokeArtwork").start();
     }
-
-`;
-  src=src.replace(marker,helper+marker);
+    `;
+  src=src.slice(0,markerIndex)+helper+src.slice(markerIndex);
 }
 
 await writeFile(karaokePath,src,'utf8');
-console.log('Audify V68.10.7 : Karaoke nettoyé, bouton ✕ Lecteur et mini-player Home-style appliqués.');
+console.log('Audify V68.10.7 : bloc Karaoke supprimé, bouton ✕ Lecteur et mini-player Home-style appliqués.');
