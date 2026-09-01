@@ -25,6 +25,11 @@ function findMethod(source,signatures,label){
   throw new Error(`V68.12.24 méthode introuvable: ${label}`);
 }
 
+function replaceMethod(source,signatures,replacement,label){
+  const found=findMethod(source,signatures,label);
+  return source.slice(0,found.start)+replacement+source.slice(found.end);
+}
+
 let home=await readFile(homePath,'utf8');
 
 // La barre sticky (recherche + avatar) est construite hors de libraryContent.
@@ -51,18 +56,31 @@ if(!onCreateBody.includes('v681224AccountState=new AudifyAccountStore(this).isSi
   home=home.slice(0,onCreate.brace+1)+onCreateBody+home.slice(onCreate.end-1);
 }
 
-// Au retour de la page Compte, compare la session réelle avec l'état qui a servi
-// à dessiner l'avatar. Si elle a changé, recrée uniquement le Home une fois.
-const onResume=findMethod(home,[
+// IMPORTANT : super.onResume() doit toujours être exécuté avant toute sortie.
+// Si l'état de session a changé, la recréation est postée après le cycle onResume
+// au lieu d'être exécutée directement dans le callback de cycle de vie.
+home=replaceMethod(home,[
   '    @Override protected void onResume(){',
   '    @Override protected void onResume() {'
-],'onResume');
-let onResumeBody=home.slice(onResume.brace+1,onResume.end-1);
-if(!onResumeBody.includes('boolean v681224Now=')){
-  const check=`\n        boolean v681224Now=new AudifyAccountStore(this).isSignedIn();\n        if(v681224Now!=v681224AccountState){\n            v681224AccountState=v681224Now;\n            recreate();\n            return;\n        }`;
-  onResumeBody=check+onResumeBody;
-  home=home.slice(0,onResume.brace+1)+onResumeBody+home.slice(onResume.end-1);
-}
+],String.raw`    @Override protected void onResume(){
+        super.onResume();
+
+        boolean v681224Now=new AudifyAccountStore(this).isSignedIn();
+        if(v681224Now!=v681224AccountState){
+            v681224AccountState=v681224Now;
+            android.view.View decor=getWindow()==null?null:getWindow().getDecorView();
+            if(decor!=null){
+                decor.post(()->{
+                    if(!isFinishing()&&!isDestroyed()) recreate();
+                });
+            }
+            return;
+        }
+
+        rebuildLibrary();
+        handler.removeCallbacks(ticker);
+        handler.post(ticker);
+    }`,'onResume');
 
 await writeFile(homePath,home,'utf8');
-console.log('Audify Android V68.12.24 : le Home relit la session compte au retour et reconstruit immédiatement l avatar sticky si connexion/déconnexion a changé.');
+console.log('Audify Android V68.12.24/25 : rafraîchissement session Home sécurisé, super.onResume garanti et recreate différé.');
