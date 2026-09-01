@@ -1,4 +1,4 @@
-name: Build Audify Android V68.12.5
+name: Build Audify Android V68.12.6
 
 on:
   workflow_dispatch:
@@ -51,34 +51,34 @@ jobs:
       - name: Apply Audify native Media3 engine
         working-directory: audify-android
         env:
-          AUDIFY_APPLE_AUTH_URL: ${{ secrets.AUDIFY_APPLE_AUTH_URL }}
-          AUDIFY_APPLE_VERIFY_URL: ${{ secrets.AUDIFY_APPLE_VERIFY_URL }}
+          AUDIFY_APPLE_AUTH_URL: https://audify-auth-alo12230-6256s-projects.vercel.app/api/apple/start
+          AUDIFY_APPLE_VERIFY_URL: https://audify-auth-alo12230-6256s-projects.vercel.app/api/apple/verify
         run: npm run android:patch
       - name: Build debug APK
         working-directory: audify-android/android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
-      - name: Prepare Audify V68.12.5 APK
+      - name: Prepare Audify V68.12.6 APK
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.5.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.6.apk
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.12.5-APK
-          path: audify-android/releases/Audify-V68.12.5.apk
+          name: Audify-V68.12.6-APK
+          path: audify-android/releases/Audify-V68.12.6.apk
           if-no-files-found: error
           retention-days: 30
       - name: Publish APK in repository
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.12.5.apk
+          git add -f audify-android/releases/Audify-V68.12.6.apk
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.12.5 APK'
+          git commit -m 'Publish Audify V68.12.6 APK'
           git pull --rebase origin main
           git push origin HEAD:main
