@@ -32,7 +32,7 @@ public class AudifyPremiumActivity extends AppCompatActivity {
         tl.topMargin=dp(24);
         page.addView(title,tl);
 
-        TextView sub=text("Un achat unique pour profiter d’Audify sans les publicités Audify et sans déblocage publicitaire pour le Karaoké ou la création de playlists.",16f,false,Color.rgb(183,193,207));
+        TextView sub=text("Un achat unique pour profiter d’Audify sans les publicités Audify et créer de nouvelles playlists sans déblocage publicitaire. Le Karaoké est gratuit pour tout le monde.",16f,false,Color.rgb(183,193,207));
         sub.setLineSpacing(dp(3),1.08f);
         page.addView(sub,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(130)));
 
