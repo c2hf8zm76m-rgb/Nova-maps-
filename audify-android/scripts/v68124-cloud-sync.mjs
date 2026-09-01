@@ -10,9 +10,6 @@ const loginPath=path.join(pkgDir,'AudifyLoginActivity.java');
 const storePath=path.join(pkgDir,'AudifyLibraryStore.java');
 const affinityPath=path.join(pkgDir,'AudifyAffinityStore.java');
 
-// =============================================================================
-// 1) Moteur Cloud Sync — Google Drive appDataFolder, fusion non destructive.
-// =============================================================================
 const cloud=String.raw`package com.nova.audify;
 
 import android.content.Context;
@@ -160,7 +157,6 @@ public final class AudifyCloudSyncManager {
                 else if(rv!=null&&rv!=JSONObject.NULL)out.put(key,rv);
             }catch(Exception ignored){}
         }
-        // Les copies de secours doivent suivre exactement les données fusionnées.
         try{
             Iterator<String> it=out.keys();java.util.ArrayList<String> base=new java.util.ArrayList<>();
             while(it.hasNext()){String k=it.next();if(!k.endsWith("_backup")&&out.opt(k) instanceof String)base.add(k);}
@@ -200,6 +196,7 @@ public final class AudifyCloudSyncManager {
     }
 
     private static void appendTracks(JSONArray out,LinkedHashSet<String> seen,JSONArray source,int limit){
+        if(source==null)return;
         for(int i=0;i<source.length();i++){
             if(limit>0&&out.length()>=limit)return;
             JSONObject o=source.optJSONObject(i);if(o==null)continue;
@@ -224,18 +221,6 @@ public final class AudifyCloudSyncManager {
             }
             return out.toString();
         }catch(Exception ignored){return null;}
-    }
-
-    private static void appendTracks(JSONArray out,LinkedHashSet<String> seen,JSONArray source,int limit){
-        if(source==null)return;
-        for(int i=0;i<source.length();i++){
-            if(limit>0&&out.length()>=limit)return;
-            JSONObject o=source.optJSONObject(i);if(o==null)continue;
-            String id=o.optString("id","").trim();
-            String fingerprint=id.isEmpty()?(o.optString("title","")+"|"+o.optString("artist","")).toLowerCase():id;
-            if(fingerprint.isEmpty()||seen.contains(fingerprint))continue;
-            seen.add(fingerprint);out.put(o);
-        }
     }
 
     private static void apply(Context context,String name,JSONObject values){
@@ -289,16 +274,8 @@ public final class AudifyCloudSyncManager {
     }
 }
 `;
-// Fix duplicate helper declaration introduced intentionally by template reuse.
-const fixedCloud=cloud.replace(/\n    private static void appendTracks\(JSONArray out,LinkedHashSet<String> seen,JSONArray source,int limit\)\{[\s\S]*?\n    \}\n\n    private static String mergePlaylistJson/,match=>{
-  const first=match.slice(0,match.lastIndexOf('\n\n    private static String mergePlaylistJson'));
-  return first+'\n\n    private static String mergePlaylistJson';
-}).replace(/\n    private static void appendTracks\(JSONArray out,LinkedHashSet<String> seen,JSONArray source,int limit\)\{\n        if\(source==null\)return;[\s\S]*?\n    \}\n\n    private static void apply/, '\n\n    private static void apply');
-await writeFile(path.join(pkgDir,'AudifyCloudSyncManager.java'),fixedCloud,'utf8');
+await writeFile(path.join(pkgDir,'AudifyCloudSyncManager.java'),cloud,'utf8');
 
-// =============================================================================
-// 2) Marquer la bibliothèque / l'affinité comme modifiées après chaque écriture.
-// =============================================================================
 let lib=await readFile(storePath,'utf8');
 lib=lib.replace('prefs.edit().putString(key,json).putString(key+"_backup",json).commit();','prefs.edit().putString(key,json).putString(key+"_backup",json).putBoolean("__cloud_dirty",true).commit();');
 lib=lib.replace('prefs.edit().putString(KEY_PLAYLISTS,json).putString(KEY_PLAYLISTS+"_backup",json).commit();','prefs.edit().putString(KEY_PLAYLISTS,json).putString(KEY_PLAYLISTS+"_backup",json).putBoolean("__cloud_dirty",true).commit();');
@@ -308,11 +285,7 @@ let affinity=await readFile(affinityPath,'utf8');
 affinity=affinity.replace('prefs.edit().putInt(key,next).commit();','prefs.edit().putInt(key,next).putBoolean("__cloud_dirty",true).commit();');
 await writeFile(affinityPath,affinity,'utf8');
 
-// =============================================================================
-// 3) Profil : autorisation Drive, sync manuelle + sync silencieuse si déjà autorisée.
-// =============================================================================
 let login=await readFile(loginPath,'utf8');
-
 if(!login.includes('import android.app.PendingIntent;'))login=login.replace('import android.content.Intent;','import android.content.Intent;\nimport android.app.PendingIntent;\nimport android.content.IntentSender;');
 if(!login.includes('import com.google.android.gms.auth.api.identity.AuthorizationClient;'))login=login.replace('import com.google.android.gms.auth.api.signin.GoogleSignIn;',`import com.google.android.gms.auth.api.identity.AuthorizationClient;
 import com.google.android.gms.auth.api.identity.AuthorizationRequest;
@@ -322,93 +295,56 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn;`);
 if(!login.includes('import com.google.android.gms.common.api.Scope;'))login=login.replace('import com.google.android.gms.common.api.ApiException;','import com.google.android.gms.common.api.ApiException;\nimport com.google.android.gms.common.api.Scope;');
 if(!login.includes('import java.util.Arrays;'))login=login.replace('import java.util.Date;','import java.util.Date;\nimport java.util.Arrays;\nimport java.util.concurrent.ExecutorService;\nimport java.util.concurrent.Executors;');
 
-login=login.replace(
-  '    private static final int RC_GOOGLE_SIGN_IN=68123;\n',
-  '    private static final int RC_GOOGLE_SIGN_IN=68123;\n    private static final int RC_DRIVE_AUTH=68124;\n    private AuthorizationClient driveAuthClient;\n    private final ExecutorService cloudExecutor=Executors.newSingleThreadExecutor();\n    private TextView cloudStatus;\n    private Button cloudSyncButton;\n    private boolean cloudInteractive=false;\n'
-);
-
-login=login.replace(
-  '        googleClient=GoogleSignIn.getClient(this,googleOptions);\n        styleWindow();',
-  '        googleClient=GoogleSignIn.getClient(this,googleOptions);\n        driveAuthClient=Identity.getAuthorizationClient(this);\n        styleWindow();'
-);
+login=login.replace('    private static final int RC_GOOGLE_SIGN_IN=68123;\n','    private static final int RC_GOOGLE_SIGN_IN=68123;\n    private static final int RC_DRIVE_AUTH=68124;\n    private AuthorizationClient driveAuthClient;\n    private final ExecutorService cloudExecutor=Executors.newSingleThreadExecutor();\n    private TextView cloudStatus;\n    private Button cloudSyncButton;\n');
+login=login.replace('        googleClient=GoogleSignIn.getClient(this,googleOptions);\n        styleWindow();','        googleClient=GoogleSignIn.getClient(this,googleOptions);\n        driveAuthClient=Identity.getAuthorizationClient(this);\n        styleWindow();');
 
 if(!login.includes('private void requestCloudSyncV68124(')){
   const marker='    private void beginGoogleSignInV68123(){';
   if(!login.includes(marker))throw new Error('V68.12.4 Google method marker introuvable');
   const methods=String.raw`    private void requestCloudSyncV68124(boolean interactive){
         if(!accounts.isSignedIn()||!"google".equals(accounts.getCurrentProvider())){
-            updateCloudStatusV68124("La synchronisation Drive nécessite un compte Google.",false);
-            return;
+            updateCloudStatusV68124("La synchronisation Drive nécessite un compte Google.",false);return;
         }
-        cloudInteractive=interactive;
         if(cloudSyncButton!=null){cloudSyncButton.setEnabled(false);cloudSyncButton.setAlpha(0.72f);}
         updateCloudStatusV68124("Connexion à Google Drive…",true);
         try{
-            AuthorizationRequest request=AuthorizationRequest.builder()
-                .setRequestedScopes(Arrays.asList(new Scope("https://www.googleapis.com/auth/drive.appdata")))
-                .build();
-            driveAuthClient.authorize(request)
-                .addOnSuccessListener(this,result->{
-                    if(result.hasResolution()){
-                        PendingIntent pending=result.getPendingIntent();
-                        if(!interactive){
-                            updateCloudStatusV68124("Autorise Google Drive avec “Synchroniser maintenant”.",false);
-                            enableCloudButtonV68124();
-                            return;
-                        }
-                        if(pending==null){updateCloudStatusV68124("Google Drive demande une autorisation indisponible.",false);enableCloudButtonV68124();return;}
-                        try{startIntentSenderForResult(pending.getIntentSender(),RC_DRIVE_AUTH,null,0,0,0);}
-                        catch(IntentSender.SendIntentException e){updateCloudStatusV68124("Impossible d'ouvrir l'autorisation Google Drive.",false);enableCloudButtonV68124();}
-                    }else handleDriveAuthorizationV68124(result);
-                })
-                .addOnFailureListener(this,e->{updateCloudStatusV68124("Autorisation Google Drive impossible.",false);enableCloudButtonV68124();});
+            AuthorizationRequest request=AuthorizationRequest.builder().setRequestedScopes(Arrays.asList(new Scope("https://www.googleapis.com/auth/drive.appdata"))).build();
+            driveAuthClient.authorize(request).addOnSuccessListener(this,result->{
+                if(result.hasResolution()){
+                    PendingIntent pending=result.getPendingIntent();
+                    if(!interactive){updateCloudStatusV68124("Autorise Google Drive avec “Synchroniser maintenant”.",false);enableCloudButtonV68124();return;}
+                    if(pending==null){updateCloudStatusV68124("Google Drive demande une autorisation indisponible.",false);enableCloudButtonV68124();return;}
+                    try{startIntentSenderForResult(pending.getIntentSender(),RC_DRIVE_AUTH,null,0,0,0);}
+                    catch(IntentSender.SendIntentException e){updateCloudStatusV68124("Impossible d'ouvrir l'autorisation Google Drive.",false);enableCloudButtonV68124();}
+                }else handleDriveAuthorizationV68124(result);
+            }).addOnFailureListener(this,e->{updateCloudStatusV68124("Autorisation Google Drive impossible.",false);enableCloudButtonV68124();});
         }catch(Exception e){updateCloudStatusV68124("Google Drive indisponible sur cet appareil.",false);enableCloudButtonV68124();}
     }
 
     private void handleDriveAuthorizationV68124(AuthorizationResult result){
         String token=result==null?null:result.getAccessToken();
-        if(token==null||token.trim().isEmpty()){
-            updateCloudStatusV68124("Google n'a pas fourni l'accès Drive nécessaire.",false);enableCloudButtonV68124();return;
-        }
+        if(token==null||token.trim().isEmpty()){updateCloudStatusV68124("Google n'a pas fourni l'accès Drive nécessaire.",false);enableCloudButtonV68124();return;}
         updateCloudStatusV68124("Fusion de ta bibliothèque…",true);
         cloudExecutor.execute(()->{
             AudifyCloudSyncManager.Result r=AudifyCloudSyncManager.sync(this,token,accounts.getCurrentEmail(),accounts.getCurrentUid());
-            runOnUiThread(()->{
-                updateCloudStatusV68124(r.message,r.ok);
-                enableCloudButtonV68124();
-                if(r.ok&&cloudSyncButton!=null)cloudSyncButton.setText("✓ Synchronisé");
-            });
+            runOnUiThread(()->{updateCloudStatusV68124(r.message,r.ok);enableCloudButtonV68124();if(r.ok&&cloudSyncButton!=null)cloudSyncButton.setText("✓ Synchronisé");});
         });
     }
 
-    private void enableCloudButtonV68124(){
-        if(cloudSyncButton!=null){cloudSyncButton.setEnabled(true);cloudSyncButton.setAlpha(1f);cloudSyncButton.setText("Synchroniser maintenant");}
-    }
-
-    private void updateCloudStatusV68124(String message,boolean positive){
-        if(cloudStatus!=null){cloudStatus.setText(message);cloudStatus.setTextColor(positive?Color.rgb(181,255,145):Color.rgb(174,184,197));}
-    }
-
-    private String cloudSubtitleV68124(){
-        long last=AudifyCloudSyncManager.getLastSync(this);
-        if(last<=0L)return "Jamais synchronisé";
-        String date=DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(new Date(last));
-        return "Dernière synchro : "+date+(AudifyCloudSyncManager.isDirty(this)?" · changements en attente":" · à jour");
-    }
+    private void enableCloudButtonV68124(){if(cloudSyncButton!=null){cloudSyncButton.setEnabled(true);cloudSyncButton.setAlpha(1f);cloudSyncButton.setText("Synchroniser maintenant");}}
+    private void updateCloudStatusV68124(String message,boolean positive){if(cloudStatus!=null){cloudStatus.setText(message);cloudStatus.setTextColor(positive?Color.rgb(181,255,145):Color.rgb(174,184,197));}}
+    private String cloudSubtitleV68124(){long last=AudifyCloudSyncManager.getLastSync(this);if(last<=0L)return "Jamais synchronisé";String date=DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(new Date(last));return "Dernière synchro : "+date+(AudifyCloudSyncManager.isDirty(this)?" · changements en attente":" · à jour");}
 
 `;
   login=login.replace(marker,methods+marker);
 }
 
-login=login.replace(
-  '        if(requestCode!=RC_GOOGLE_SIGN_IN)return;',
-  `        if(requestCode==RC_DRIVE_AUTH){
+login=login.replace('        if(requestCode!=RC_GOOGLE_SIGN_IN)return;',`        if(requestCode==RC_DRIVE_AUTH){
             try{handleDriveAuthorizationV68124(driveAuthClient.getAuthorizationResultFromIntent(data));}
             catch(Exception e){updateCloudStatusV68124("Autorisation Google Drive annulée.",false);enableCloudButtonV68124();}
             return;
         }
-        if(requestCode!=RC_GOOGLE_SIGN_IN)return;`
-);
+        if(requestCode!=RC_GOOGLE_SIGN_IN)return;`);
 
 const oldCloud=String.raw`        LinearLayout cloud=new LinearLayout(this); cloud.setOrientation(LinearLayout.VERTICAL); cloud.setPadding(dp(15),dp(12),dp(15),dp(12)); cloud.setBackground(round(Color.rgb(17,27,22),dp(1),Color.rgb(55,89,43),dp(20)));
         TextView cloudTitle=text("Synchronisation cloud",14f,true); cloudTitle.setTextColor(ACCENT); cloud.addView(cloudTitle);
@@ -417,16 +353,12 @@ const oldCloud=String.raw`        LinearLayout cloud=new LinearLayout(this); clo
 const newCloud=String.raw`        LinearLayout cloud=new LinearLayout(this); cloud.setOrientation(LinearLayout.VERTICAL); cloud.setPadding(dp(15),dp(14),dp(15),dp(14)); cloud.setBackground(round(Color.rgb(17,27,22),dp(1),Color.rgb(55,89,43),dp(20)));
         TextView cloudTitle=text("Synchronisation cloud",14f,true); cloudTitle.setTextColor(ACCENT); cloud.addView(cloudTitle,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(30)));
         boolean googleCloud="google".equals(accounts.getCurrentProvider());
-        cloudStatus=text(googleCloud?cloudSubtitleV68124():"La synchronisation des comptes e-mail arrivera avec le backend Audify.",13f,false);
-        cloudStatus.setTextColor(Color.rgb(180,191,184)); cloudStatus.setLineSpacing(dp(2),1.08f); cloud.addView(cloudStatus,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT));
-        cloudSyncButton=activeButton(googleCloud?"Synchroniser maintenant":"Cloud Google uniquement",false);
-        cloudSyncButton.setEnabled(googleCloud); cloudSyncButton.setAlpha(googleCloud?1f:0.50f);
-        if(googleCloud)cloudSyncButton.setOnClickListener(v->requestCloudSyncV68124(true));
+        cloudStatus=text(googleCloud?cloudSubtitleV68124():"La synchronisation des comptes e-mail arrivera avec le backend Audify.",13f,false);cloudStatus.setTextColor(Color.rgb(180,191,184));cloudStatus.setLineSpacing(dp(2),1.08f);cloud.addView(cloudStatus,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT));
+        cloudSyncButton=activeButton(googleCloud?"Synchroniser maintenant":"Cloud Google uniquement",false);cloudSyncButton.setEnabled(googleCloud);cloudSyncButton.setAlpha(googleCloud?1f:0.50f);if(googleCloud)cloudSyncButton.setOnClickListener(v->requestCloudSyncV68124(true));
         LinearLayout.LayoutParams cblp=new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(52));cblp.topMargin=dp(13);cloud.addView(cloudSyncButton,cblp);
-        LinearLayout.LayoutParams clp=new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT); clp.topMargin=dp(22); card.addView(cloud,clp);
+        LinearLayout.LayoutParams clp=new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);clp.topMargin=dp(22);card.addView(cloud,clp);
         if(googleCloud&&(AudifyCloudSyncManager.isDirty(this)||AudifyCloudSyncManager.getLastSync(this)==0L))cloudStatus.postDelayed(()->requestCloudSyncV68124(false),550L);`;
 if(!login.includes(oldCloud))throw new Error('V68.12.4 bloc cloud profil introuvable');
 login=login.replace(oldCloud,newCloud);
-
 await writeFile(loginPath,login,'utf8');
 console.log('Audify V68.12.4 : Google Drive appDataFolder Cloud Sync + fusion likes/playlists/recents/affinité.');
