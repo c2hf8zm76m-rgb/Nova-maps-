@@ -59,7 +59,7 @@ src=replaceMethod(src,'    private Meta resolveMetadata(String title,String arti
     }`,'resolveMetadata');
 
 src=replaceMethod(src,'    private String cleanTitle(String value){',String.raw`    private String cleanTitle(String value){
-        String s=safe(value).replace('’','\'').replace('–','-').replace('—','-');
+        String s=safe(value).replace("’","'").replace('–','-').replace('—','-');
         s=s.replaceAll("(?i)\\s*[\\[(][^\\])]*(?:official|officiel|clip|music\\s*video|video|audio|visualizer|lyrics?|paroles|4k|hd|mv)[^\\])]*[\\])]\\s*"," ");
         s=s.replaceAll("(?i)\\b(official\\s+(music\\s+)?video|clip\\s+officiel|official\\s+audio|audio\\s+officiel|official\\s+visualizer|visualizer|lyrics?\\s+video|paroles)\\b"," ");
         s=s.replaceAll("(?i)\\s*\\|\\s*(official|officiel|video|audio|visualizer|lyrics?).*$"," ");
@@ -70,7 +70,7 @@ src=replaceMethod(src,'    private String cleanTitle(String value){',String.raw`
     }`,'cleanTitle');
 
 src=replaceMethod(src,'    private String cleanArtist(String value){',String.raw`    private String cleanArtist(String value){
-        String s=safe(value).replace('’','\'').replace('–','-').replace('—','-');
+        String s=safe(value).replace("’","'").replace('–','-').replace('—','-');
         s=s.replaceAll("(?i)\\s*-\\s*topic\\s*$","");
         s=s.replaceAll("(?i)\\b(officiel|official|vevo)\\b"," ");
         s=s.replaceAll("(?i)\\s+(?:music|channel)\\s*$","");
@@ -79,7 +79,6 @@ src=replaceMethod(src,'    private String cleanArtist(String value){',String.raw
         return s;
     }`,'cleanArtist');
 
-// Helpers ajoutés juste avant le résolveur LRCLIB.
 const lrclibSig='    private LyricsResult resolveFromLrclib(Meta meta,double trackDuration) throws Exception {';
 const helperBlock=String.raw`    private String[] splitArtistTitle(String value){
         String s=safe(value);
@@ -102,7 +101,7 @@ const helperBlock=String.raw`    private String[] splitArtistTitle(String value)
         String s=cleanTitle(value);
         s=s.replaceAll("(?i)\\s*[\\[(](?:feat\\.?|ft\\.?|featuring)[^\\])]*[\\])]\\s*"," ");
         s=s.replaceAll("(?i)\\s+(?:feat\\.?|ft\\.?|featuring)\\s+.+$","");
-        s=s.replaceAll("(?i)\\s*[\\[(](?:remaster(?:ed)?(?:\\s+\\d{2,4})?|live(?:\\s+at|\\s+from)?[^\\])]*|acoustic(?:\\s+version)?|radio\\s+edit|single\\s+version|album\\s+version|original\\s+mix|sped\\s+up|slowed(?:\\s+down)?|nightcore)[\\])]\\s*$","");
+        s=s.replaceAll("(?i)\\s*[\\[(](?:remaster(?:ed)?.*|live.*|acoustic.*|radio\\s+edit|single\\s+version|album\\s+version|original\\s+mix|sped\\s+up|slowed(?:\\s+down)?|nightcore)[\\])]\\s*$","");
         s=s.replaceAll("\\s+"," ").trim();
         return s.isEmpty()?cleanTitle(value):s;
     }
@@ -195,8 +194,6 @@ src=replaceMethod(src,lrclibSig,String.raw`    private LyricsResult resolveFromL
         List<Meta> variants=buildMetaVariants(meta);
         int maxVariants=Math.min(5,variants.size());
 
-        // 1) Signature exacte. La durée aide énormément quand elle correspond, mais une vidéo
-        // YouTube peut avoir intro/outro : on retente donc sans durée avant d'abandonner.
         if(!variants.isEmpty()){
             Meta first=variants.get(0);
             if(!first.artist.isEmpty()){
@@ -212,7 +209,6 @@ src=replaceMethod(src,lrclibSig,String.raw`    private LyricsResult resolveFromL
             }
         }
 
-        // 2) Recherche structurée sur plusieurs interprétations du metadata YouTube.
         for(int i=0;i<maxVariants;i++){
             Meta v=variants.get(i);
             politeDelay();
@@ -222,15 +218,12 @@ src=replaceMethod(src,lrclibSig,String.raw`    private LyricsResult resolveFromL
             if(candidates.size()>=18) break;
         }
 
-        // 3) Recherche titre seul : indispensable lorsque le nom de chaîne YouTube n'est pas
-        // exactement le nom de l'artiste présent dans LRCLIB.
         String broadTitle=coreTitle(meta.title);
         if(!broadTitle.isEmpty()){
             politeDelay();
             addCandidates(candidates,seen,parseArray(httpGet("https://lrclib.net/api/search?track_name="+q(broadTitle)));
         }
 
-        // 4) Requête large, dernier passage LRCLIB.
         String broadArtist=firstArtist(meta.artist);
         String broadQuery=(broadTitle+" "+broadArtist).trim();
         if(!broadQuery.isEmpty()){
@@ -268,7 +261,7 @@ src=replaceMethod(src,'    private LyricsResult resolveFromLyricsOvh(Meta meta) 
             if(attempted.contains(key)) continue;
             attempted.add(key);
             if(i>0) politeDelay();
-            JSONObject json=parseObject(httpGet("https://api.lyrics.ovh/v1/"+qPath(v.artist)+"/"+qPath(v.title)));
+            JSONObject json=parseObject(httpGet("https://api.lyrics.ovh/v1/"+pathPart(v.artist)+"/"+pathPart(v.title)));
             if(json==null) continue;
             String plain=json.optString("lyrics","");
             if(!plain.trim().isEmpty()) return new LyricsResult("",plain,"lyrics.ovh",0L);
@@ -321,7 +314,6 @@ src=replaceMethod(src,'    private void writeCache(LyricsResult result){',String
         if(result==null||!result.hasLyrics()) return;
         try{
             SharedPreferences prefs=getSharedPreferences(CACHE_PREFS,MODE_PRIVATE);
-            // VERROU PAR MORCEAU : une résolution positive ne sera jamais remplacée silencieusement.
             String existing=prefs.getString(cacheKey(),"");
             if(existing!=null&&!existing.isEmpty()){
                 try{
@@ -348,7 +340,6 @@ src=replaceMethod(src,'    private void writeCache(LyricsResult result){',String
         }catch(Throwable ignored){}
     }`,'writeCache');
 
-// Garde-fous de build : un futur patch qui supprimerait le verrou échouera explicitement.
 if(!src.includes('LYRICS_ENGINE_VERSION=681231')) throw new Error('V68.12.31 : marqueur moteur absent');
 if(!src.includes('o.put("locked",true)')) throw new Error('V68.12.31 : verrou cache absent');
 if(!src.includes('api/search?track_name=')) throw new Error('V68.12.31 : recherche LRCLIB structurée absente');
