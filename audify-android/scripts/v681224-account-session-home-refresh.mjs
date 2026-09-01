@@ -32,15 +32,12 @@ function replaceMethod(source,signatures,replacement,label){
 
 let home=await readFile(homePath,'utf8');
 
-// La barre sticky (recherche + avatar) est construite hors de libraryContent.
-// rebuildLibrary() ne peut donc pas mettre l'avatar à jour quand la session change.
 const classMarker='public class NativeHomeActivity extends AppCompatActivity {';
 if(!home.includes(classMarker)) throw new Error('V68.12.24 classe NativeHomeActivity introuvable');
 if(!home.includes('private boolean v681224AccountState;')){
   home=home.replace(classMarker,classMarker+'\n    private boolean v681224AccountState;');
 }
 
-// Mémorise l'état réellement affiché lors de la construction du Home.
 const onCreate=findMethod(home,[
   '    @Override protected void onCreate(Bundle savedInstanceState){',
   '    @Override protected void onCreate(Bundle savedInstanceState) {'
@@ -56,9 +53,6 @@ if(!onCreateBody.includes('v681224AccountState=new AudifyAccountStore(this).isSi
   home=home.slice(0,onCreate.brace+1)+onCreateBody+home.slice(onCreate.end-1);
 }
 
-// IMPORTANT : super.onResume() doit toujours être exécuté avant toute sortie.
-// Si l'état de session a changé, la recréation est postée après le cycle onResume
-// au lieu d'être exécutée directement dans le callback de cycle de vie.
 home=replaceMethod(home,[
   '    @Override protected void onResume(){',
   '    @Override protected void onResume() {'
@@ -84,3 +78,7 @@ home=replaceMethod(home,[
 
 await writeFile(homePath,home,'utf8');
 console.log('Audify Android V68.12.24/25 : rafraîchissement session Home sécurisé, super.onResume garanti et recreate différé.');
+
+// V68.12.26 est chaînée ici afin que tous les futurs builds héritent du support
+// de photo de profil sans dépendre d'une commande manuelle supplémentaire.
+await import('./v681226-custom-profile-photo.mjs');
