@@ -1,5 +1,10 @@
 {
   "mode": "test",
   "admobAppId": "ca-app-pub-3940256099942544~3347511713",
-  "appOpenAdUnitId": "ca-app-pub-3940256099942544/9257395921"
+  "appOpenAdUnitId": "ca-app-pub-3940256099942544/9257395921",
+  "interstitialAdUnitId": "ca-app-pub-3940256099942544/1033173712",
+  "nativeAdUnitId": "ca-app-pub-3940256099942544/2247696110",
+  "rewardedKaraokeAdUnitId": "ca-app-pub-3940256099942544/5224354917",
+  "rewardedPlaylistAdUnitId": "ca-app-pub-3940256099942544/5224354917",
+  "premiumProductId": "audify_premium_lifetime"
 }
