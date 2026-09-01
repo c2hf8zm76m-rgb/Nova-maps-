@@ -18,10 +18,11 @@ const newButton='        Button karaokeButton=iconButton("");\n        applyKara
 if(!src.includes(oldButton)) throw new Error('V68.12.20 : création bouton Karaoke V68.12.19 introuvable');
 src=src.replace(oldButton,newButton);
 
-const oldLayout='        controlTop.addView(karaokeButton,new LinearLayout.LayoutParams(dp(165),dp(58)));';
-const newLayout='        controlTop.addView(karaokeButton,new LinearLayout.LayoutParams(dp(54),dp(54)));';
-if(!src.includes(oldLayout)) throw new Error('V68.12.20 : layout bouton Karaoke introuvable');
-src=src.replace(oldLayout,newLayout);
+// Les versions intermédiaires ont ajusté la largeur du bouton : on remplace donc
+// n'importe quelle taille dp existante au lieu de dépendre de l'ancienne 165x58.
+const karaokeLayout=/controlTop\.addView\(\s*karaokeButton\s*,\s*new LinearLayout\.LayoutParams\(\s*dp\(\d+\)\s*,\s*dp\(\d+\)\s*\)\s*\);/;
+if(!karaokeLayout.test(src)) throw new Error('V68.12.20 : layout bouton Karaoke introuvable');
+src=src.replace(karaokeLayout,'controlTop.addView(karaokeButton,new LinearLayout.LayoutParams(dp(54),dp(54)));');
 
 const marker='    private LinearLayout.LayoutParams weighted() {';
 if(!src.includes(marker)) throw new Error('V68.12.20 : point insertion helper introuvable');
