@@ -96,7 +96,7 @@ home=replaceMethod(
         }
         avatar.setElevation(dp(5));
         avatar.setOnClickListener(v->{
-            animatePress(avatar);
+            avatar.animate().scaleX(0.94f).scaleY(0.94f).setDuration(70L).withEndAction(()->avatar.animate().scaleX(1f).scaleY(1f).setDuration(110L).start()).start();
             startActivity(new Intent(this,AudifyLoginActivity.class));
         });
 
