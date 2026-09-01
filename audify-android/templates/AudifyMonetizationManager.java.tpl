@@ -38,6 +38,7 @@ import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class AudifyMonetizationManager implements PurchasesUpdatedListener {
     private static final String PREFS="audify_monetization";
@@ -58,6 +59,12 @@ public final class AudifyMonetizationManager implements PurchasesUpdatedListener
     private ProductDetails premiumDetails;
     private boolean billingReady=false;
 
+    // V68.12.27 — Search ne dépend plus d'un chargement réseau au moment du clic.
+    // Une interstitielle est préparée en arrière-plan et consommée uniquement si
+    // elle est déjà prête. Sinon la navigation continue immédiatement.
+    private InterstitialAd searchInterstitial;
+    private boolean searchInterstitialLoading=false;
+
     public static synchronized AudifyMonetizationManager get(Context c){
         if(instance==null) instance=new AudifyMonetizationManager(c.getApplicationContext());
         return instance;
@@ -71,26 +78,111 @@ public final class AudifyMonetizationManager implements PurchasesUpdatedListener
         app=c;
         prefs=app.getSharedPreferences(PREFS,Context.MODE_PRIVATE);
         initBilling();
+        preloadSearchInterstitial();
     }
 
     public boolean isPremium(){ return prefs.getBoolean(KEY_PREMIUM,false); }
 
+    /**
+     * Ouvre Search de manière fail-open : aucune panne, lenteur ou absence de
+     * réponse AdMob ne peut retenir l'utilisateur sur le Home.
+     */
     public void showSearchInterstitial(Activity activity,Runnable after){
-        if(activity==null){ if(after!=null) after.run(); return; }
-        if(isPremium()){ if(after!=null) after.run(); return; }
+        if(activity==null){ runSearchAfter(null,after); return; }
+        if(isPremium()){
+            runSearchAfter(activity,after);
+            return;
+        }
+
         long last=prefs.getLong(KEY_LAST_SEARCH_AD,0L);
-        if(System.currentTimeMillis()-last<SEARCH_COOLDOWN_MS){ if(after!=null) after.run(); return; }
-        InterstitialAd.load(activity,INTERSTITIAL_ID,new AdRequest.Builder().build(),new InterstitialAdLoadCallback(){
-            @Override public void onAdLoaded(InterstitialAd ad){
-                prefs.edit().putLong(KEY_LAST_SEARCH_AD,System.currentTimeMillis()).apply();
-                ad.setFullScreenContentCallback(new com.google.android.gms.ads.FullScreenContentCallback(){
-                    @Override public void onAdDismissedFullScreenContent(){ if(after!=null) after.run(); }
-                    @Override public void onAdFailedToShowFullScreenContent(com.google.android.gms.ads.AdError e){ if(after!=null) after.run(); }
-                });
-                ad.show(activity);
-            }
-            @Override public void onAdFailedToLoad(LoadAdError e){ if(after!=null) after.run(); }
+        if(System.currentTimeMillis()-last<SEARCH_COOLDOWN_MS){
+            runSearchAfter(activity,after);
+            preloadSearchInterstitial();
+            return;
+        }
+
+        final InterstitialAd ready;
+        synchronized(this){
+            ready=searchInterstitial;
+            searchInterstitial=null;
+        }
+
+        // Le point essentiel de V68.12.27 : on ne lance JAMAIS un load bloquant
+        // depuis le clic. Si aucune pub n'est prête, Search s'ouvre tout de suite.
+        if(ready==null){
+            runSearchAfter(activity,after);
+            preloadSearchInterstitial();
+            return;
+        }
+
+        AtomicBoolean completed=new AtomicBoolean(false);
+        Runnable finish=()->{
+            if(!completed.compareAndSet(false,true)) return;
+            runSearchAfter(activity,after);
+            preloadSearchInterstitial();
+        };
+
+        ready.setFullScreenContentCallback(new com.google.android.gms.ads.FullScreenContentCallback(){
+            @Override public void onAdDismissedFullScreenContent(){ finish.run(); }
+            @Override public void onAdFailedToShowFullScreenContent(com.google.android.gms.ads.AdError e){ finish.run(); }
         });
+
+        try{
+            prefs.edit().putLong(KEY_LAST_SEARCH_AD,System.currentTimeMillis()).apply();
+            ready.show(activity);
+        }catch(Throwable ignored){
+            finish.run();
+        }
+    }
+
+    private void preloadSearchInterstitial(){
+        if(isPremium()) return;
+        synchronized(this){
+            if(searchInterstitial!=null||searchInterstitialLoading) return;
+            searchInterstitialLoading=true;
+        }
+        try{
+            InterstitialAd.load(app,INTERSTITIAL_ID,new AdRequest.Builder().build(),new InterstitialAdLoadCallback(){
+                @Override public void onAdLoaded(InterstitialAd ad){
+                    synchronized(AudifyMonetizationManager.this){
+                        searchInterstitial=ad;
+                        searchInterstitialLoading=false;
+                    }
+                }
+                @Override public void onAdFailedToLoad(LoadAdError e){
+                    synchronized(AudifyMonetizationManager.this){
+                        searchInterstitial=null;
+                        searchInterstitialLoading=false;
+                    }
+                }
+            });
+        }catch(Throwable ignored){
+            synchronized(this){
+                searchInterstitial=null;
+                searchInterstitialLoading=false;
+            }
+        }
+    }
+
+    private void runSearchAfter(Activity activity,Runnable after){
+        if(after==null) return;
+        if(activity==null){
+            try{ after.run(); }catch(Throwable ignored){}
+            return;
+        }
+        try{
+            activity.runOnUiThread(()->{
+                try{
+                    View decor=activity.getWindow()==null?null:activity.getWindow().getDecorView();
+                    if(decor!=null) decor.post(()->{ try{ after.run(); }catch(Throwable ignored){} });
+                    else after.run();
+                }catch(Throwable ignored){
+                    try{ after.run(); }catch(Throwable ignored2){}
+                }
+            });
+        }catch(Throwable ignored){
+            try{ after.run(); }catch(Throwable ignored2){}
+        }
     }
 
     public void askRewardedKaraoke(Activity activity,Runnable reward){
