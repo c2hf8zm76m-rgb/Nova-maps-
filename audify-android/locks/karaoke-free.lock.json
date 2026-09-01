@@ -1,0 +1,10 @@
+{
+  "feature": "Audify Karaoke",
+  "status": "LOCKED_FREE_FEATURE",
+  "since": "V68.12.32",
+  "implementation": "Keep the historical NativePlayerActivity call path intact. AudifyMonetizationManager.askRewardedKaraoke must be a direct pass-through and must not load or show an ad.",
+  "doNot": [
+    "Do not patch NativePlayerActivity.openKaraoke after generation just to remove ads",
+    "Do not reintroduce rewarded ads, paywalls, coins, timers, or subscriptions in front of Karaoke unless explicitly requested"
+  ]
+}
