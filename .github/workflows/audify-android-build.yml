@@ -34,6 +34,8 @@ jobs:
           java-version: '21'
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+      - name: Install Android API 36
+        run: sdkmanager "platforms;android-36"
       - name: Install Audify Android dependencies
         working-directory: audify-android
         run: npm install
