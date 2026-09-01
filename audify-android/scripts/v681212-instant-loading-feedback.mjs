@@ -135,12 +135,22 @@ if(!player.includes('loadingStatusV681212')){
     '        uiHandler.post(uiTicker);\n        uiHandler.removeCallbacks(loadingTickerV681212);\n        uiHandler.post(loadingTickerV681212);',
     'start loading ticker'
   );
-  player=replaceRequired(
-    player,
-    '        uiHandler.removeCallbacks(uiTicker);\n        super.onStop();',
-    '        uiHandler.removeCallbacks(uiTicker);\n        uiHandler.removeCallbacks(loadingTickerV681212);\n        super.onStop();',
-    'stop loading ticker'
-  );
+
+  const pauseMarker='        uiHandler.removeCallbacks(uiTicker);\n        super.onPause();';
+  if(player.includes(pauseMarker)){
+    player=player.replace(
+      pauseMarker,
+      '        uiHandler.removeCallbacks(uiTicker);\n        uiHandler.removeCallbacks(loadingTickerV681212);\n        super.onPause();'
+    );
+  }
+
+  const destroyMarker='        uiHandler.removeCallbacks(uiTicker);\n        if (discAnimator != null) discAnimator.cancel();';
+  if(player.includes(destroyMarker)){
+    player=player.replace(
+      destroyMarker,
+      '        uiHandler.removeCallbacks(uiTicker);\n        uiHandler.removeCallbacks(loadingTickerV681212);\n        if (discAnimator != null) discAnimator.cancel();'
+    );
+  }
 }
 await writeFile(playerPath,player,'utf8');
 
