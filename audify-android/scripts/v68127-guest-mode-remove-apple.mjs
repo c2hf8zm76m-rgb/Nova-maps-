@@ -41,12 +41,8 @@ let manifest=await readFile(manifestPath,'utf8');
 manifest=manifest.replace(/\s*<activity\s+android:name="\.AudifyAppleCallbackActivity"[\s\S]*?<\/activity>\s*/m,'\n');
 await writeFile(manifestPath,manifest,'utf8');
 
-// Supprime les composants Apple générés par V68.12.5 : ils ne sont plus exposés dans l'APK.
-for(const p of [
-  path.join(pkgDir,'AudifyAppleCallbackActivity.java'),
-  path.join(android,'app','src','main','res','values','audify_apple_auth.xml')
-]){
-  try{await unlink(p);}catch{}
-}
+// Le callback Apple est supprimé du binaire. Les deux chaînes de ressources restent volontairement
+// présentes car l'ancien code interne n'est plus accessible mais les référence encore à la compilation.
+try{await unlink(path.join(pkgDir,'AudifyAppleCallbackActivity.java'));}catch{}
 
 console.log('Audify V68.12.7 : Sign in with Apple retiré, bouton remplacé par Continuer sans compte.');
