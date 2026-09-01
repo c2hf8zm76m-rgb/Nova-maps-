@@ -8,7 +8,7 @@ const android=path.join(root,'android');
 const pkgDir=path.join(android,'app','src','main','java','com','nova','audify');
 const config=JSON.parse(await readFile(path.join(root,'ads-config.json'),'utf8'));
 
-function validAd(id){ return /^ca-app-pub-\\d+\\/\\d+$/.test(String(id||'')); }
+function validAd(id){ return /^ca-app-pub-\d+\/\d+$/.test(String(id||'')); }
 for(const k of ['interstitialAdUnitId','nativeAdUnitId','rewardedKaraokeAdUnitId','rewardedPlaylistAdUnitId']){
   if(!validAd(config[k])) throw new Error('V68.12.9 identifiant AdMob invalide: '+k);
 }
@@ -18,7 +18,7 @@ if(!premiumProductId) throw new Error('V68.12.9 premiumProductId manquant');
 const gradlePath=path.join(android,'app','build.gradle');
 let gradle=await readFile(gradlePath,'utf8');
 if(!gradle.includes('com.android.billingclient:billing:6.2.1')){
-  gradle=gradle.replace(/dependencies\\s*\\{/, "dependencies {\\n    implementation 'com.android.billingclient:billing:6.2.1'");
+  gradle=gradle.replace(/dependencies\s*\{/, "dependencies {\n    implementation 'com.android.billingclient:billing:6.2.1'");
 }
 await writeFile(gradlePath,gradle,'utf8');
 
@@ -55,8 +55,8 @@ function extractMethod(src,signatures){
 function wrapMethod(src,signatures,newName,wrapper){
   const m=extractMethod(src,signatures);
   if(!m) return src;
-  const renamed=m.text.replace(/private void\\s+\\w+\\s*\\(/,'private void '+newName+'(');
-  return src.slice(0,m.start)+wrapper+'\\n\\n'+renamed+src.slice(m.end);
+  const renamed=m.text.replace(/private void\s+\w+\s*\(/,'private void '+newName+'(');
+  return src.slice(0,m.start)+wrapper+'\n\n'+renamed+src.slice(m.end);
 }
 
 const homePath=path.join(pkgDir,'NativeHomeActivity.java');
@@ -72,7 +72,7 @@ if(!home.includes('openSearchAfterAdV68129')){
 }
 
 if(home.includes('addAccountEntryV68121();') && !home.includes('addPremiumEntryV68129();')){
-  home=home.replace('addAccountEntryV68121();','addAccountEntryV68121();\\n        addPremiumEntryV68129();');
+  home=home.replace('addAccountEntryV68121();','addAccountEntryV68121();\n        addPremiumEntryV68129();');
 }
 
 if(!home.includes('private void addPremiumEntryV68129()')){
@@ -90,7 +90,7 @@ if(!home.includes('private void addPremiumEntryV68129()')){
     '        addPanel(panel,dp(9));',
     '    }',
     ''
-  ].join('\\n');
+  ].join('\n');
   if(home.includes(marker)) home=home.replace(marker,helper+marker);
 }
 await writeFile(homePath,home,'utf8');
@@ -135,11 +135,11 @@ let app=await readFile(appPath,'utf8');
 if(!app.includes('isPremiumStatic(this)')){
   app=app.replace(
     '    private void loadAppOpenAd() {',
-    '    private void loadAppOpenAd() {\\n        if (AudifyMonetizationManager.isPremiumStatic(this)) { launchOpportunityConsumed = true; return; }'
+    '    private void loadAppOpenAd() {\n        if (AudifyMonetizationManager.isPremiumStatic(this)) { launchOpportunityConsumed = true; return; }'
   );
   app=app.replace(
     '    private void showIfLaunchIsStillActive() {',
-    '    private void showIfLaunchIsStillActive() {\\n        if (AudifyMonetizationManager.isPremiumStatic(this)) { launchOpportunityConsumed = true; appOpenAd = null; return; }'
+    '    private void showIfLaunchIsStillActive() {\n        if (AudifyMonetizationManager.isPremiumStatic(this)) { launchOpportunityConsumed = true; appOpenAd = null; return; }'
   );
 }
 await writeFile(appPath,app,'utf8');
@@ -149,7 +149,7 @@ let manifest=await readFile(manifestPath,'utf8');
 if(!manifest.includes('android:name=".AudifyPremiumActivity"')){
   manifest=manifest.replace(
     '</application>',
-    '        <activity android:name=".AudifyPremiumActivity" android:exported="false" android:screenOrientation="portrait" />\\n    </application>'
+    '        <activity android:name=".AudifyPremiumActivity" android:exported="false" android:screenOrientation="portrait" />\n    </application>'
   );
 }
 await writeFile(manifestPath,manifest,'utf8');
