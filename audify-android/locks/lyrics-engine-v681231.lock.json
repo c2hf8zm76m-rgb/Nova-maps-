@@ -1,0 +1,25 @@
+{
+  "engine": "Audify Lyrics Resolver",
+  "lockedVersion": "V68.12.31",
+  "engineVersion": 681231,
+  "patch": "scripts/v681231-lyrics-resolver-lock.mjs",
+  "status": "LOCKED_STABLE_BASE",
+  "policy": "Do not replace, reorder, or modify this lyrics engine unless the user explicitly requests a lyrics-engine change.",
+  "matching": [
+    "YouTube metadata cleanup",
+    "artist-title split recovery",
+    "title/core-title variants",
+    "artist/core-artist variants",
+    "LRCLIB exact with duration",
+    "LRCLIB exact without duration",
+    "LRCLIB structured search",
+    "LRCLIB title-only search",
+    "LRCLIB broad search",
+    "lyrics.ovh multi-variant fallback"
+  ],
+  "positiveCache": {
+    "scope": "per YouTube videoId when available",
+    "immutable": true,
+    "rule": "Once non-empty lyrics are stored by engine 681231, later resolver calls must not silently overwrite them."
+  }
+}
