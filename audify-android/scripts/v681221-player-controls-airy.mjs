@@ -169,12 +169,17 @@ src=src.replace('controls.setPadding(dp(13),dp(10),dp(13),dp(8));','controls.set
 src=src.replace('Color.argb(205,44,58,53),\n                Color.argb(174,25,34,35),\n                Color.argb(150,13,19,25)','Color.argb(182,39,52,48),\n                Color.argb(150,23,31,33),\n                Color.argb(128,12,18,24)');
 src=src.replace('controlsBg.setStroke(dp(1),Color.argb(132,173,255,96));','controlsBg.setStroke(dp(1),Color.argb(88,209,236,218));');
 
-const controlsLpRe=/        int controlsWidth=Math\.min\(screenW-dp\(30\),dp\(560\)\);\n        FrameLayout\.LayoutParams controlsLp=new FrameLayout\.LayoutParams\(controlsWidth,dp\(\d+\),Gravity\.BOTTOM\|Gravity\.CENTER_HORIZONTAL\);\n        controlsLp\.bottomMargin=dp\(58\);/;
-if(!controlsLpRe.test(src)) throw new Error('V68.12.21 : layout principal controls introuvable');
-src=src.replace(controlsLpRe,'        int controlsWidth=Math.min(screenW-dp(30),dp(560));\n        FrameLayout.LayoutParams controlsLp=new FrameLayout.LayoutParams(controlsWidth,dp(142),Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);\n        controlsLp.bottomMargin=dp(58);');
+// Les versions V68.10.8+ ont rendu le lecteur plus étroit (82/455 au lieu de 30/560).
+// On ne dépend donc plus de ces valeurs : on conserve la largeur finale et on ne
+// modifie que la hauteur du panneau principal.
+const controlsLpRe=/FrameLayout\.LayoutParams\s+controlsLp\s*=\s*new FrameLayout\.LayoutParams\(\s*([^,\n]+)\s*,\s*dp\(\d+\)\s*,\s*(Gravity\.BOTTOM(?:\|Gravity\.CENTER_HORIZONTAL)?)\s*\);/;
+const controlsLpMatch=src.match(controlsLpRe);
+if(!controlsLpMatch) throw new Error('V68.12.21 : déclaration controlsLp introuvable');
+src=src.replace(controlsLpRe,`FrameLayout.LayoutParams controlsLp=new FrameLayout.LayoutParams(${controlsLpMatch[1].trim()},dp(142),${controlsLpMatch[2]});`);
 
-// La zone scrollable n'a plus besoin de réserver autant de hauteur au lecteur.
-src=src.replace('scrollerLp.bottomMargin=dp(228);','scrollerLp.bottomMargin=dp(210);');
+// Conserve la marge basse choisie par les versions précédentes et raccourcit
+// simplement la réserve de la zone scrollable, si elle est présente.
+src=src.replace(/scrollerLp\.bottomMargin=dp\(\d+\);/,'scrollerLp.bottomMargin=dp(210);');
 
 await writeFile(playerPath,src,'utf8');
 
