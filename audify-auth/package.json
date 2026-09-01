@@ -1,0 +1,12 @@
+{
+  "name": "audify-auth",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "jose": "^6.1.0"
+  }
+}
