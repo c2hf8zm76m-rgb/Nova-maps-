@@ -12,9 +12,8 @@ function replaceRequired(src,from,to,label){
 }
 
 // -----------------------------------------------------------------------------
-// 1) Petit cache de résolution YouTube + préchargement dès ACTION_DOWN.
-//    Le but est de gagner le temps entre le toucher et le vrai clic sans lancer
-//    plusieurs extractions NewPipe concurrentes pour le même titre.
+// 1) Petit cache de résolution YouTube + préchargement avant ACTION_LOAD.
+//    Une résolution déjà commencée ou terminée est réutilisée par ExoPlayer.
 // -----------------------------------------------------------------------------
 const dsPath=path.join(pkgDir,'AudifyYoutubeDataSourceFactory.java');
 let ds=await readFile(dsPath,'utf8');
@@ -37,13 +36,13 @@ ds=replaceRequired(
 
 const resolverMarker='    private static String resolveAudio(String videoId) throws Exception {';
 if(!ds.includes('public static void prefetch(String videoId)')){
-  const helpers=`    public static void prefetch(String videoId) {\n        if (videoId == null || videoId.trim().isEmpty()) return;\n        final String id = videoId.trim();\n        synchronized (STREAM_CACHE_LOCK) {\n            CachedStream cached = STREAM_CACHE.get(id);\n            long now = System.currentTimeMillis();\n            if (cached != null && now - cached.createdAt < STREAM_CACHE_TTL_MS) return;\n            if (PREFETCHING.contains(id)) return;\n            PREFETCHING.add(id);\n        }\n        new Thread(() -> {\n            try { resolveCachedAudio(id); }\n            catch (Throwable ignored) {}\n            finally { synchronized (STREAM_CACHE_LOCK) { PREFETCHING.remove(id); } }\n        }, "audify-preload-" + id).start();\n    }\n\n    private static String resolveCachedAudio(String videoId) throws Exception {\n        synchronized (STREAM_CACHE_LOCK) {\n            long now = System.currentTimeMillis();\n            CachedStream cached = STREAM_CACHE.get(videoId);\n            if (cached != null && now - cached.createdAt < STREAM_CACHE_TTL_MS) return cached.url;\n\n            String resolved = resolveAudio(videoId);\n            if (STREAM_CACHE.size() >= 10) STREAM_CACHE.clear();\n            STREAM_CACHE.put(videoId,new CachedStream(resolved,now));\n            return resolved;\n        }\n    }\n\n`;
+  const helpers=`    public static void prefetch(String videoId) {\n        if (videoId == null || videoId.trim().isEmpty()) return;\n        final String id = videoId.trim();\n        synchronized (STREAM_CACHE_LOCK) {\n            CachedStream cached = STREAM_CACHE.get(id);\n            long now = System.currentTimeMillis();\n            if (cached != null && now - cached.createdAt < STREAM_CACHE_TTL_MS) return;\n            if (PREFETCHING.contains(id)) return;\n            PREFETCHING.add(id);\n        }\n        new Thread(() -> {\n            try { resolveCachedAudio(id); }\n            catch (Throwable ignored) {}\n            finally { synchronized (STREAM_CACHE_LOCK) { PREFETCHING.remove(id); } }\n        }, "audify-preload-" + id).start();\n    }\n\n    private static String resolveCachedAudio(String videoId) throws Exception {\n        synchronized (STREAM_CACHE_LOCK) {\n            long now = System.currentTimeMillis();\n            CachedStream cached = STREAM_CACHE.get(videoId);\n            if (cached != null && now - cached.createdAt < STREAM_CACHE_TTL_MS) return cached.url;\n\n            String resolved = resolveAudio(videoId);\n            if (STREAM_CACHE.size() >= 10) STREAM_CACHE.clear();\n            STREAM_CACHE.put(videoId,new CachedStream(resolved,System.currentTimeMillis()));\n            return resolved;\n        }\n    }\n\n`;
   ds=replaceRequired(ds,resolverMarker,helpers+resolverMarker,'prefetch helpers');
 }
 await writeFile(dsPath,ds,'utf8');
 
 // -----------------------------------------------------------------------------
-// 2) Service Media3 : nouvelle action légère de préchargement.
+// 2) Service Media3 : action légère de préchargement.
 // -----------------------------------------------------------------------------
 const servicePath=path.join(pkgDir,'AudifyPlaybackService.java');
 let service=await readFile(servicePath,'utf8');
@@ -68,15 +67,16 @@ if(!service.includes('AudifyYoutubeDataSourceFactory.prefetch')){
 await writeFile(servicePath,service,'utf8');
 
 // -----------------------------------------------------------------------------
-// 3) Recherche : préchargement au doigt posé, avant ACTION_UP / onClick.
+// 3) Recherche : le chemin V68.12.11 est notre point stable. Dès que le clic
+//    est validé, la résolution démarre avant SET_QUEUE / LOAD / ouverture UI.
 // -----------------------------------------------------------------------------
 const mainPath=path.join(pkgDir,'MainActivity.java');
 let main=await readFile(mainPath,'utf8');
 
-if(!main.includes('ACTION_PREFETCH).putExtra(AudifyPlaybackService.EXTRA_VIDEO_ID, item.id)')){
-  const focusMarker='            card.setFocusable(true);\n';
-  const touch=`            card.setOnTouchListener((view,event) -> {\n                if (event.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) {\n                    try {\n                        startService(new android.content.Intent(this,AudifyPlaybackService.class)\n                            .setAction(AudifyPlaybackService.ACTION_PREFETCH)\n                            .putExtra(AudifyPlaybackService.EXTRA_VIDEO_ID,item.id));\n                    } catch (Throwable ignored) {}\n                }\n                return false;\n            });\n`;
-  main=replaceRequired(main,focusMarker,focusMarker+touch,'prefetch sur carte recherche');
+if(!main.includes('V68.12.12 : préchauffe le flux sélectionné')){
+  const chosenMarker='            AudifySearchItemV673 chosen = items.get(selectedIndex);\n';
+  const preload=`\n            // V68.12.12 : préchauffe le flux sélectionné avant le vrai LOAD.\n            try {\n                startService(new android.content.Intent(this, AudifyPlaybackService.class)\n                    .setAction(AudifyPlaybackService.ACTION_PREFETCH)\n                    .putExtra(AudifyPlaybackService.EXTRA_VIDEO_ID, chosen.id));\n            } catch (Throwable ignored) {}\n`;
+  main=replaceRequired(main,chosenMarker,chosenMarker+preload,'prefetch chemin V68.12.11');
 }
 
 if(!main.includes('.putExtra("autoplayRequested", true)')){
@@ -90,7 +90,7 @@ if(!main.includes('.putExtra("autoplayRequested", true)')){
 await writeFile(mainPath,main,'utf8');
 
 // -----------------------------------------------------------------------------
-// 4) Grand lecteur : feedback instantané pendant la résolution/buffering.
+// 4) Grand lecteur : feedback instantané pendant résolution et buffering.
 // -----------------------------------------------------------------------------
 const playerPath=path.join(pkgDir,'NativePlayerActivity.java');
 let player=await readFile(playerPath,'utf8');
@@ -126,7 +126,7 @@ if(!player.includes('loadingStatusV681212')){
   );
 
   const helperMarker='    private LinearLayout.LayoutParams weighted() {';
-  const helpers=`    private void applyLoadingFeedbackV681212(boolean loading) {\n        loadingV681212 = loading;\n        if (playPauseButton != null) {\n            playPauseButton.setEnabled(!loading);\n            playPauseButton.setAlpha(loading ? 0.94f : 1f);\n            if (loading) {\n                String[] frames={"◐","◓","◑","◒"};\n                String frame=frames[loadingFrameV681212++ % frames.length];\n                playPauseButton.setText(frame);\n                playPauseButton.setContentDescription("Chargement du morceau en cours");\n            } else {\n                applyPlayState(lastPlaying);\n            }\n        }\n        if (loadingStatusV681212 != null) {\n            if (loading) {\n                String[] frames={"◐","◓","◑","◒"};\n                String frame=frames[loadingFrameV681212 % frames.length];\n                loadingStatusV681212.setText(frame + "  Chargement du morceau…");\n                loadingStatusV681212.setVisibility(View.VISIBLE);\n            } else {\n                loadingStatusV681212.setVisibility(View.GONE);\n            }\n        }\n    }\n\n    private void updateLoadingFeedbackV681212() {\n        try {\n            JSONObject state=new JSONObject(AudifyPlaybackService.getStateJson());\n            String stateVideoId=state.optString("videoId","");\n            boolean same=currentTrack!=null && currentTrack.id!=null && currentTrack.id.equals(stateVideoId);\n            boolean playing=state.optBoolean("playing",false);\n            boolean buffering=state.optBoolean("loading",false);\n            String error=state.optString("error","");\n\n            if (same && playing) autoplayWaitingV681212=false;\n            if (same && error!=null && !error.isEmpty() && !buffering) autoplayWaitingV681212=false;\n            boolean show=same && (buffering || autoplayWaitingV681212);\n            applyLoadingFeedbackV681212(show);\n        } catch (Throwable ignored) {\n            if (autoplayWaitingV681212) applyLoadingFeedbackV681212(true);\n        }\n    }\n\n`;
+  const helpers=`    private void applyLoadingFeedbackV681212(boolean loading) {\n        loadingV681212 = loading;\n        if (playPauseButton != null) {\n            playPauseButton.setEnabled(!loading);\n            playPauseButton.setAlpha(loading ? 0.94f : 1f);\n            if (loading) {\n                String[] frames={"◐","◓","◑","◒"};\n                String frame=frames[loadingFrameV681212++ % frames.length];\n                playPauseButton.setText(frame);\n                playPauseButton.setContentDescription("Chargement du morceau en cours");\n            } else {\n                applyPlayState(lastPlaying);\n            }\n        }\n        if (loadingStatusV681212 != null) {\n            if (loading) {\n                String[] frames={"◐","◓","◑","◒"};\n                String frame=frames[loadingFrameV681212 % frames.length];\n                loadingStatusV681212.setText(frame + "  Chargement du morceau…");\n                loadingStatusV681212.setVisibility(View.VISIBLE);\n            } else {\n                loadingStatusV681212.setVisibility(View.GONE);\n            }\n        }\n    }\n\n    private void updateLoadingFeedbackV681212() {\n        try {\n            JSONObject state=new JSONObject(AudifyPlaybackService.getStateJson());\n            String stateVideoId=state.optString("videoId","");\n            boolean same=currentTrack!=null && currentTrack.id!=null && currentTrack.id.equals(stateVideoId);\n            boolean playing=state.optBoolean("playing",false);\n            boolean buffering=state.optBoolean("loading",false);\n            String error=state.optString("error","");\n\n            if (same && playing) autoplayWaitingV681212=false;\n            if (same && error!=null && !error.isEmpty() && !buffering) autoplayWaitingV681212=false;\n            boolean show=(same && buffering) || autoplayWaitingV681212;\n            applyLoadingFeedbackV681212(show);\n        } catch (Throwable ignored) {\n            if (autoplayWaitingV681212) applyLoadingFeedbackV681212(true);\n        }\n    }\n\n`;
   player=replaceRequired(player,helperMarker,helpers+helperMarker,'helpers loading');
 
   player=replaceRequired(
@@ -144,4 +144,4 @@ if(!player.includes('loadingStatusV681212')){
 }
 await writeFile(playerPath,player,'utf8');
 
-console.log('Audify V68.12.12 : feedback instantané de chargement + préchargement au toucher + cache court des flux.');
+console.log('Audify V68.12.12 : feedback instantané de chargement + préchargement avant LOAD + cache court des flux.');
