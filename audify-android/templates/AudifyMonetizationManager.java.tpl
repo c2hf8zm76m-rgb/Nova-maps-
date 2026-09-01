@@ -185,8 +185,12 @@ public final class AudifyMonetizationManager implements PurchasesUpdatedListener
         }
     }
 
+    // V68.12.33 — Karaoke est une fonctionnalité gratuite pour tous.
+    // On conserve la signature historique pour compatibilité avec le Player,
+    // mais aucun SDK publicitaire n'est appelé sur ce chemin.
     public void askRewardedKaraoke(Activity activity,Runnable reward){
-        askRewarded(activity,"Débloquer le Karaoké","Regarde une publicité complète pour ouvrir le Karaoké de ce titre.",REWARDED_KARAOKE_ID,reward);
+        if(activity==null) return;
+        if(reward!=null) reward.run();
     }
 
     public void askRewardedPlaylist(Activity activity,Runnable reward){
