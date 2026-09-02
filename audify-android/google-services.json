@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "242774139081-ip3daltse1t8163ecfgmbap1gsori4og.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nova.audify",
+            "certificate_hash": "22a2f9f4df364f949e0af31a67e7aba31a9544fe"
+          }
+        },
+        {
           "client_id": "242774139081-j4jkhhnk8rj72094qrmhlkfhspof2p68.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
