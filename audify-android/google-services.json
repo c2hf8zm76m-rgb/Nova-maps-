@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "242774139081",
+    "project_id": "audify-753ce",
+    "storage_bucket": "audify-753ce.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:242774139081:android:b937e09986dc04b699ad18",
+        "android_client_info": {
+          "package_name": "com.nova.audify"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCyk_RNQuoFI8L50jDTHCO_nb6DSCtzQ5k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,9 +1,11 @@
-name: Build Audify Android V68.12.36
+name: Build Audify Android V68.12.37
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths: ['audify/**', 'audify-android/**', '.github/workflows/audify-android-build.yml']
   push:
-    branches: [ main ]
+    branches: [ main, codex/audify-firebase-68.12.37 ]
     paths:
       - 'audify/**'
       - 'audify-android/**'
@@ -18,6 +20,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  firebase-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+        working-directory: audify-android/firebase
+      - run: npm run test:rules
+        working-directory: audify-android/firebase
   build:
     runs-on: ubuntu-latest
     steps:
@@ -38,7 +55,7 @@ jobs:
         run: sdkmanager "platforms;android-36"
       - name: Install Audify Android dependencies
         working-directory: audify-android
-        run: npm install
+        run: npm install --no-audit --no-fund
       - name: Prepare Audify web UI
         working-directory: audify-android
         run: npm run prepare:web
@@ -48,34 +65,35 @@ jobs:
       - name: Sync Capacitor Android
         working-directory: audify-android
         run: npx cap sync android
-      - name: Apply Audify native engine and V68.12.36 unified loading buttons
+      - name: Apply Audify native engine and V68.12.37 Firebase accounts and cloud library
         working-directory: audify-android
         run: npm run android:patch
       - name: Build debug APK
         working-directory: audify-android/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
-      - name: Prepare Audify V68.12.36 APK
+          ./gradlew testDebugUnitTest assembleDebug --stacktrace
+      - name: Prepare Audify V68.12.37 APK
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.36.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.37.apk
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.12.36-APK
-          path: audify-android/releases/Audify-V68.12.36.apk
+          name: Audify-V68.12.37-APK
+          path: audify-android/releases/Audify-V68.12.37.apk
           if-no-files-found: error
           retention-days: 30
       - name: Publish APK in repository
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.12.36.apk
+          git add -f audify-android/releases/Audify-V68.12.37.apk
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.12.36 APK'
+          git commit -m 'Publish Audify V68.12.37 APK'
           git pull --rebase origin main
           git push origin HEAD:main
