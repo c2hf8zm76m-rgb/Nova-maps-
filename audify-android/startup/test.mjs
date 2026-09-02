@@ -35,7 +35,7 @@ assert.ok(home.includes('try{AudifyFirebaseAvatar.get(this).removeListener'),'de
 assert.ok(sync.includes('firebaseAvailableV681242'),'Firebase init has a local guest fallback');
 assert.ok(service.includes('new Intent(this, NativeHomeActivity.class)'),'media notification opens native Home');
 assert.ok(service.includes('onCreateV681242Guarded'),'media service creation is guarded');
-assert.ok(logo.includes('setLayerType(View.LAYER_TYPE_SOFTWARE,null);'),'chroma renderer has a software fallback');
+assert.ok(logo.includes('setLayerType(View.LAYER_TYPE_HARDWARE,null);'),'chroma renderer preserves alpha masking');
 assert.ok(library.includes('getLikesForStartupV681242'),'startup Home data is bounded');
 assert.ok(karaoke.includes('showKaraokeHardFallbackV681243'),'karaoke launch has a safe fallback');
 assert.ok(karaoke.includes('postKaraokeUiV681243'),'lyrics callbacks respect activity lifecycle');

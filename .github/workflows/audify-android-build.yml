@@ -1,4 +1,4 @@
-name: Build Audify Android V68.12.43
+name: Build Audify Android V68.12.44
 
 on:
   workflow_dispatch:
@@ -65,7 +65,7 @@ jobs:
       - name: Sync Capacitor Android
         working-directory: audify-android
         run: npx cap sync android
-      - name: Apply Audify native engine, native search and V68.12.43 karaoke reliability
+      - name: Apply Audify native engine, native search, karaoke reliability and splash logo fix
         working-directory: audify-android
         run: npm run android:patch && npm run android:patch-native-search && npm run android:patch-hardening
       - name: Verify startup readiness and generated launcher
@@ -82,15 +82,15 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk
-      - name: Prepare Audify V68.12.43 APK
+      - name: Prepare Audify V68.12.44 APK
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.43.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.44.apk
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.12.43-APK
-          path: audify-android/releases/Audify-V68.12.43.apk
+          name: Audify-V68.12.44-APK
+          path: audify-android/releases/Audify-V68.12.44.apk
           if-no-files-found: error
           retention-days: 30
       - name: Publish APK in repository
@@ -98,11 +98,11 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.12.43.apk
+          git add -f audify-android/releases/Audify-V68.12.44.apk
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.12.43 APK'
+          git commit -m 'Publish Audify V68.12.44 APK'
           git pull --rebase origin "${{ github.ref_name }}"
           git push origin HEAD:"${{ github.ref_name }}"
