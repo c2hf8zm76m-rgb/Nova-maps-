@@ -5,7 +5,7 @@ import android.app.Application;
 public final class AudifyApplication extends Application {
     @Override public void onCreate(){
         super.onCreate();
-        AudifyFirebaseSync.get(this);
-        AudifyFirebaseAvatar.get(this);
+        // The launcher paints its first frame before warming the per-user store.
+        // Other entry points keep using the same lazy, application-scoped services.
     }
 }

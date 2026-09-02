@@ -31,6 +31,58 @@ public final class AudifyFirebaseSync {
     private boolean serverSeen=false, writable=true, retryScheduled=false;
     private long retryDelay=2000;
     private ListenerRegistration registration;
+    private long startupRequest=0, startupCompleted=0;
+    private String startupFailure="";
+
+    /** An explicit server round-trip; cached snapshots cannot complete a launch. */
+    public synchronized long requestStartupCheckpoint() {
+        refreshSession();
+        final long ticket=++startupRequest;
+        final int epoch=generation;
+        final String owner=uid;
+        startupFailure="";
+        if(owner.isEmpty()) {startupCompleted=ticket;changed();return ticket;}
+        if(!writable) {startupFailure=error;changed();return ticket;}
+        FirebaseFirestore.getInstance().collection("users").document(owner).collection("entries")
+            .get(Source.SERVER).addOnCompleteListener(task->{synchronized(this){
+                if(epoch!=generation||ticket!=startupRequest||!owner.equals(uid))return;
+                if(!task.isSuccessful()) {startupFailure=cloudError(task.getException());changed();return;}
+                QuerySnapshot snapshot=task.getResult();
+                if(snapshot==null||snapshot.getMetadata().isFromCache()) {
+                    startupFailure="Le serveur n’a pas confirmé la synchronisation.";changed();return;
+                }
+                String before=saved();
+                try {
+                    for(DocumentSnapshot doc:snapshot.getDocuments()) {
+                        if(doc.getMetadata().hasPendingWrites())continue;
+                        JSONObject record=new JSONObject(doc.getData());
+                        Timestamp timestamp=doc.getTimestamp("updatedAt");
+                        record.remove("updatedAt");record.put("serverTime",timestamp==null?0:timestamp.toDate().getTime());
+                        state.acknowledge(doc.getId(),record.optString("opId"));
+                        state.acceptRemote(doc.getId(),record);
+                    }
+                    persist(before);serverSeen=true;startupCompleted=ticket;startupFailure="";
+                    drain();
+                } catch(Exception invalid) {
+                    rollback(before);startupFailure="Lecture cloud ou enregistrement local impossible. Vos données sont conservées.";
+                }
+                changed();
+            }});
+        drain();return ticket;
+    }
+    public static final class StartupSnapshot {
+        public final String uid,error;
+        public final boolean localHealthy,serverConfirmed;
+        public final int pending,inFlight;
+        StartupSnapshot(String uid,String error,boolean localHealthy,boolean confirmed,int pending,int inFlight){
+            this.uid=uid;this.error=error;this.localHealthy=localHealthy;this.serverConfirmed=confirmed;this.pending=pending;this.inFlight=inFlight;
+        }
+    }
+    public synchronized StartupSnapshot startupSnapshot(long ticket) {
+        refreshSession();
+        return new StartupSnapshot(uid,startupFailure.isEmpty()?error:startupFailure,writable,
+            ticket>0&&startupCompleted==ticket,state.pendingCount(),inFlight.size());
+    }
 
     private AudifyFirebaseSync(Context context) {
         app=context;
@@ -55,6 +107,7 @@ public final class AudifyFirebaseSync {
         boolean switched=uid!=null;
         if(registration!=null) {registration.remove();registration=null;}
         generation++; inFlight.clear(); serverSeen=false; error=""; writable=true; retryDelay=2000;
+        startupRequest++;startupCompleted=0;startupFailure="";
         uid=next;
         prefs=app.getSharedPreferences("audify_firebase_"+(uid.isEmpty()?"guest":AudifySyncState.id("uid",uid)),Context.MODE_PRIVATE);
         try { state=new AudifySyncState(prefs.getString("state","")); }
@@ -77,7 +130,6 @@ public final class AudifyFirebaseSync {
                     if(epoch!=generation||!owner.equals(uid))return;
                     if(failure!=null) {error=cloudError(failure);registration=null;retryLater();changed();return;}
                     if(snapshot==null||snapshot.getMetadata().isFromCache())return;
-                    serverSeen=true;
                     String before=saved();
                     try {
                         for(DocumentChange change:snapshot.getDocumentChanges(MetadataChanges.INCLUDE)) {
@@ -92,7 +144,7 @@ public final class AudifyFirebaseSync {
                             state.acknowledge(doc.getId(),record.optString("opId"));
                             state.acceptRemote(doc.getId(),record);
                         }
-                        persist(before); error="";retryDelay=2000;
+                        persist(before);serverSeen=true;error="";retryDelay=2000;
                     } catch(Exception invalid) {rollback(before);error="Données cloud ou stockage local invalides. Synchronisation suspendue.";}
                     changed(); drain();
                 }

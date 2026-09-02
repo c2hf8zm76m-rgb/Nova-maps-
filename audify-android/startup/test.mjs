@@ -1,0 +1,27 @@
+import {mkdtemp,readFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const output=await mkdtemp(path.join(tmpdir(),'audify-startup-tests-'));
+const javaBin=process.env.AUDIFY_JAVA_BIN||'';
+execFileSync(javaBin?path.join(javaBin,'javac'):'javac',['-encoding','UTF-8','-d',output,
+ path.join(root,'startup/src/com/nova/audify/AudifyStartupState.java'),path.join(root,'startup/tests/AudifyStartupStateTest.java')],{stdio:'inherit'});
+execFileSync(javaBin?path.join(javaBin,'java'):'java',['-cp',output,'com.nova.audify.AudifyStartupStateTest'],{stdio:'inherit'});
+const java=path.join(root,'android/app/src/main/java/com/nova/audify');
+const home=await readFile(path.join(java,'NativeHomeActivity.java'),'utf8');
+const manifest=await readFile(path.join(root,'android/app/src/main/AndroidManifest.xml'),'utf8');
+const sync=await readFile(path.join(java,'AudifyFirebaseSync.java'),'utf8');
+assert.equal((manifest.match(/android.intent.category.LAUNCHER/g)||[]).length,1,'one launcher');
+assert.ok(!manifest.includes('android:name=".AudifySplashActivity"'),'old splash is not a second activity');
+assert.equal((home.match(/void onStart\(\)/g)||[]).length,1,'no duplicate lifecycle hooks');
+assert.equal((home.match(/void onStop\(\)/g)||[]).length,1);
+assert.ok(home.indexOf('SplashScreen.installSplashScreen(this)')<home.indexOf('super.onCreate(savedInstanceState)'),'system splash installed first');
+assert.ok(home.includes('startup.mountHome(root)'),'actual home mounted behind overlay');
+assert.ok(home.includes('startup.assetFinished(recommendationsTicket'),'recommendations have completion callback');
+assert.ok(sync.includes('.get(Source.SERVER)'),'fresh server checkpoint');
+assert.ok(home.includes('!startup.isRevealed()||libraryContent==null'),'no early Firebase UI refresh');
+assert.ok(!home.includes('postDelayed(()->openAudify'),'no fixed readiness timer');
+console.log('Audify startup: 10 generated integration checks passed');

@@ -23,6 +23,17 @@ public final class AudifyFirebaseAvatar {
     private SharedPreferences prefs(String uid){return app.getSharedPreferences("audify_avatar_"+AudifySyncState.id("uid",uid),Context.MODE_PRIVATE);}
     private File local(String uid,String extension){return new File(app.getFilesDir(),"audify_profile_"+uid.replaceAll("[^A-Za-z0-9._-]","_")+extension);}
     public String status(){return message;}
+    /** Transport readiness, not merely presence of a local fallback portrait. */
+    public boolean readyForStartup(){
+        refresh();String uid=sync.uid();if(uid.isEmpty())return true;
+        SharedPreferences p=prefs(uid);
+        if(!p.getString("pending","").isEmpty())return false;
+        JSONObject record=sync.read((state,cloud)->state.get("profile","avatar"),null);
+        if(record==null||record.optBoolean("deleted"))return true;
+        JSONObject payload=record.optJSONObject("payload");if(payload==null)return true;
+        String path=payload.optString("path"),ext=payload.optString("extension");
+        return path.isEmpty()||(path.equals(p.getString("localPath",""))&&local(uid,ext).isFile());
+    }
     public void queue(File file){
         String uid=sync.uid();if(uid.isEmpty())return;
         try{
