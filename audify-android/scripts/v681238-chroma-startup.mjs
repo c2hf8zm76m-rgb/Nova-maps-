@@ -103,12 +103,18 @@ if(!home.includes('// CHROMA_STARTUP_V681238')){
         }));`);
  home=home.replace('TextView loading=text("Recherche de nouvelles recommandations…",15f,true);',
   'TextView loading=text(startup!=null&&startup.isOffline()?"Recommandations disponibles avec une connexion":startup!=null&&startup.isDegraded()?"Recommandations indisponibles pour le moment":"Recherche de nouvelles recommandations…",15f,true);');
+ // Keep the premium card read-only during startup even if an older generated
+ // Home slipped through the compatibility patch; Billing remains user-opened.
+ home=home.replaceAll('AudifyMonetizationManager.get(this).isPremium()','AudifyMonetizationManager.isPremiumStatic(this)');
  // Resolve the local avatar while covered instead of a 550 ms post-splash replacement.
  home=home.replace('avatar.postDelayed(()->{','final int avatarTicket=startup==null?-1:startup.assetStarted();\n                avatar.post(()->{');
  home=home.replace('if(AudifyProfileMedia.apply(this,avatar,localProfileV681234)){','boolean avatarLoaded=AudifyProfileMedia.apply(this,avatar,localProfileV681234);\n                    if(avatarLoaded){');
  home=home.replace('                },550L);','                    if(startup!=null)startup.assetFinished(avatarTicket,avatarLoaded);\n                });');
  await writeFile(homePath,home);
 }
+// Idempotency for an already-generated local tree (the CI tree is fresh).
+home=home.replaceAll('AudifyMonetizationManager.get(this).isPremium()','AudifyMonetizationManager.isPremiumStatic(this)');
+await writeFile(homePath,home);
 
 let discovery=await readFile(path.join(java,'AudifyDiscoveryAgent.java'),'utf8');
 discovery=discovery.replace('if(!IN_FLIGHT.compareAndSet(false,true)) return;','if(!IN_FLIGHT.compareAndSet(false,true)){if(callback!=null)callback.onFinished(false);return;}');

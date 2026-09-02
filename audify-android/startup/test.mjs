@@ -20,6 +20,7 @@ assert.equal((home.match(/void onStart\(\)/g)||[]).length,1,'no duplicate lifecy
 assert.equal((home.match(/void onStop\(\)/g)||[]).length,1);
 assert.ok(home.indexOf('SplashScreen.installSplashScreen(this)')<home.indexOf('super.onCreate(savedInstanceState)'),'system splash installed first');
 assert.ok(home.includes('startup.mountHome(root)'),'actual home mounted behind overlay');
+assert.ok(!home.includes('AudifyMonetizationManager.get(this).isPremium()'),'Billing is not touched while startup paints');
 assert.ok(home.includes('startup.assetFinished(recommendationsTicket'),'recommendations have completion callback');
 assert.ok(sync.includes('.get(Source.SERVER)'),'fresh server checkpoint');
 assert.ok(home.includes('!startup.isRevealed()||libraryContent==null'),'no early Firebase UI refresh');
