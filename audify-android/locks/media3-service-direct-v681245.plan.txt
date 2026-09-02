@@ -1,0 +1,5 @@
+V68.12.45 planned direct Media3 service fallback
+
+If V68.12.44 session activation still fails, the next APK must modify AudifyPlaybackService itself rather than NativeHomeActivity. The target architecture is the Umihi service model: MediaLibraryService owns ExoPlayer, MediaLibrarySession directly exposes that player, Android/Media3 owns the foreground notification lifecycle, and UI controllers are clients only.
+
+This plan intentionally avoids changing karaoke or splash code.
