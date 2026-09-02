@@ -12,7 +12,20 @@
           "package_name": "com.nova.audify"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "242774139081-j4jkhhnk8rj72094qrmhlkfhspof2p68.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nova.audify",
+            "certificate_hash": "9bfac7a1d6bb2f08f2cc16a6cd002832cee0822e"
+          }
+        },
+        {
+          "client_id": "242774139081-ifr0q9537jpnnvl6gjknn0qc9m5icok0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCyk_RNQuoFI8L50jDTHCO_nb6DSCtzQ5k"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "242774139081-ifr0q9537jpnnvl6gjknn0qc9m5icok0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
