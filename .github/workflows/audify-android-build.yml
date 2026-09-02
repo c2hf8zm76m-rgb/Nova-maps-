@@ -73,6 +73,12 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew testDebugUnitTest assembleDebug --stacktrace
+      - name: Print debug APK signing fingerprints
+        working-directory: audify-android/android
+        run: |
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          "$APKSIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk
       - name: Prepare Audify V68.12.37 APK
         run: |
           mkdir -p audify-android/releases
