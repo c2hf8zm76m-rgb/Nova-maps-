@@ -17,6 +17,8 @@ const sync=await readFile(path.join(java,'AudifyFirebaseSync.java'),'utf8');
 const service=await readFile(path.join(java,'AudifyPlaybackService.java'),'utf8');
 const logo=await readFile(path.join(java,'AudifyChromaLogoView.java'),'utf8');
 const library=await readFile(path.join(java,'AudifyLibraryStore.java'),'utf8');
+const karaoke=await readFile(path.join(java,'NativeKaraokeActivity.java'),'utf8');
+const player=await readFile(path.join(java,'NativePlayerActivity.java'),'utf8');
 assert.equal((manifest.match(/android.intent.category.LAUNCHER/g)||[]).length,1,'one launcher');
 assert.ok(!manifest.includes('android:name=".AudifySplashActivity"'),'old splash is not a second activity');
 assert.equal((home.match(/void onStart\(\)/g)||[]).length,1,'no duplicate lifecycle hooks');
@@ -35,4 +37,7 @@ assert.ok(service.includes('new Intent(this, NativeHomeActivity.class)'),'media 
 assert.ok(service.includes('onCreateV681242Guarded'),'media service creation is guarded');
 assert.ok(logo.includes('setLayerType(View.LAYER_TYPE_SOFTWARE,null);'),'chroma renderer has a software fallback');
 assert.ok(library.includes('getLikesForStartupV681242'),'startup Home data is bounded');
-console.log('Audify startup: 17 generated integration checks passed');
+assert.ok(karaoke.includes('showKaraokeHardFallbackV681243'),'karaoke launch has a safe fallback');
+assert.ok(karaoke.includes('postKaraokeUiV681243'),'lyrics callbacks respect activity lifecycle');
+assert.ok(player.includes('hydrateCurrentTrackV681243'),'karaoke button recovers the active player track');
+console.log('Audify startup: 20 generated integration checks passed');
