@@ -1,0 +1,15 @@
+{
+  "version": "68.12.44",
+  "purpose": "Media3 background/lock-screen architecture aligned with Umihi",
+  "base": "V68.12.43 stable karaoke + green splash",
+  "changes": [
+    "MediaLibrarySession directly wraps ExoPlayer",
+    "ExoPlayer uses USAGE_MEDIA + AUDIO_CONTENT_TYPE_MUSIC",
+    "WAKE_MODE_NETWORK enabled",
+    "handleAudioBecomingNoisy enabled",
+    "SessionActivity opens NativeHomeActivity",
+    "service stopWithTask=false",
+    "foreground media playback permissions retained",
+    "custom media notification provider removed so Media3 manages foreground/system notification"
+  ]
+}
