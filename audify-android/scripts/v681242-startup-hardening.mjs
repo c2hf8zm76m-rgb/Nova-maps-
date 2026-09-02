@@ -121,7 +121,8 @@ if (!sync.includes('firebaseAvailableV681242')) {
             firebaseAvailableV681242=false;
             uid="";error="";writable=true;serverSeen=false;
             prefs=app.getSharedPreferences("audify_firebase_guest",Context.MODE_PRIVATE);
-            try{state=new AudifySyncState(prefs.getString("state",""));}catch(Throwable ignored){state=new AudifySyncState("");}
+            try{state=new AudifySyncState(prefs.getString("state",""));}
+            catch(Throwable ignored){try{state=new AudifySyncState("");}catch(Exception impossible){throw new IllegalStateException(impossible);}}
             android.util.Log.e("AudifyFirebase","Firebase indisponible; mode invité local",unavailable);
         }
     }`
