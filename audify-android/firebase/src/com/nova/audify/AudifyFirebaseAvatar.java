@@ -8,6 +8,8 @@ import org.json.JSONObject;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.UUID;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Optional Storage transport: immutable private objects; Firestore stores only their path. */
 public final class AudifyFirebaseAvatar {
@@ -18,11 +20,16 @@ public final class AudifyFirebaseAvatar {
     private final Handler main=new Handler(Looper.getMainLooper());
     private String owner="",uploading="",downloading="",message="";
     private boolean retryScheduled=false;
+    private final Set<Runnable> listeners=new HashSet<>();
     private long retryAfter=0;
     private AudifyFirebaseAvatar(Context context){app=context;sync=AudifyFirebaseSync.get(app);sync.addListener(this::refresh);main.post(this::refresh);}
     private SharedPreferences prefs(String uid){return app.getSharedPreferences("audify_avatar_"+AudifySyncState.id("uid",uid),Context.MODE_PRIVATE);}
     private File local(String uid,String extension){return new File(app.getFilesDir(),"audify_profile_"+uid.replaceAll("[^A-Za-z0-9._-]","_")+extension);}
     public String status(){return message;}
+    public synchronized void addListener(Runnable listener){if(listener!=null)listeners.add(listener);}
+    public synchronized void removeListener(Runnable listener){listeners.remove(listener);}
+    private void changed(){java.util.ArrayList<Runnable> copy; synchronized(this){copy=new java.util.ArrayList<>(listeners);} main.post(()->{for(Runnable listener:copy)try{listener.run();}catch(Throwable ignored){}});}
+
     /** Transport readiness, not merely presence of a local fallback portrait. */
     public boolean readyForStartup(){
         refresh();String uid=sync.uid();if(uid.isEmpty())return true;
@@ -32,7 +39,10 @@ public final class AudifyFirebaseAvatar {
         if(record==null||record.optBoolean("deleted"))return true;
         JSONObject payload=record.optJSONObject("payload");if(payload==null)return true;
         String path=payload.optString("path"),ext=payload.optString("extension");
-        return path.isEmpty()||(path.equals(p.getString("localPath",""))&&local(uid,ext).isFile());
+        if(path.isEmpty())return true;
+        File cached=local(uid,ext);
+        if(cached.isFile()&&cached.length()>0L){if(!path.equals(p.getString("localPath","")))p.edit().putString("localPath",path).apply();return true;}
+        return false;
     }
     public void queue(File file){
         String uid=sync.uid();if(uid.isEmpty())return;
@@ -54,7 +64,7 @@ public final class AudifyFirebaseAvatar {
         boolean saved=sync.editFor(uid,(state,cloud)->{state.change("profile","avatar",new JSONObject().put("path","").put("extension",""),true,cloud);return true;},false);
         if(!saved){p.edit().putString("pending",pending).putString("pendingFile",old).commit();return false;}
         if(!old.isEmpty())new File(app.getFilesDir(),old).delete();
-        message="Suppression de l’avatar en attente du cloud";retryAfter=0;return true;
+        message="Suppression de l’avatar en attente du cloud";retryAfter=0;changed();return true;
     }
     public void retry(){message="";retryAfter=0;refresh();}
     private void retryLater(){retryAfter=android.os.SystemClock.elapsedRealtime()+60000;if(retryScheduled)return;retryScheduled=true;main.postDelayed(()->{retryScheduled=false;refresh();},60000);}
@@ -73,7 +83,7 @@ public final class AudifyFirebaseAvatar {
                 uploading="";
                 if(!task.isSuccessful()){message="Avatar sur cet appareil uniquement : stockage cloud indisponible.";retryLater();return;}
                 boolean saved=sync.editFor(uid,(state,cloud)->{state.change("profile","avatar",new JSONObject().put("path",path).put("extension",ext),false,cloud);return true;},false);
-                if(saved){p.edit().remove("pending").remove("pendingFile").putString("localPath",path).commit();file.delete();message="Avatar envoyé ; synchronisation du profil en cours";}
+                if(saved){p.edit().remove("pending").remove("pendingFile").putString("localPath",path).commit();file.delete();message="Avatar envoyé ; synchronisation du profil en cours";changed();}
                 else{message="Avatar envoyé ; confirmation locale en attente";retryLater();}
             });return;
         }
@@ -101,7 +111,7 @@ public final class AudifyFirebaseAvatar {
                         if(temp.length()>10L*1024*1024||bounds.outWidth<=0||bounds.outHeight<=0||bounds.outWidth>2048||bounds.outHeight>2048)throw new IOException();
                         File target=local(uid,ext);if(!temp.renameTo(target))throw new IOException();
                         File other=local(uid,ext.equals(".gif")?".jpg":".gif");AudifyProfileMedia.clearSafe(other);other.delete();AudifyProfileMedia.markSafe(target);
-                        p.edit().putString("localPath",path).commit();message="Avatar disponible dans le cloud";
+                        p.edit().putString("localPath",path).commit();message="Avatar disponible dans le cloud";changed();
                     }catch(Exception invalid){message="Avatar cloud illisible ; sélectionne une autre image.";}finally{temp.delete();}
                 });
             });
