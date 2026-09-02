@@ -9,21 +9,19 @@ const android=path.join(root,'android');
 // Media3 1.11.0 exige compileSdk 36. Android recommande AGP >= 8.9.1 pour API 36.
 const rootGradlePath=path.join(android,'build.gradle');
 let rootGradle=await readFile(rootGradlePath,'utf8');
-const beforeAgp=rootGradle;
 rootGradle=rootGradle.replace(
   /com\.android\.tools\.build:gradle:[0-9A-Za-z.\-]+/g,
   'com.android.tools.build:gradle:8.9.1'
 );
-if(rootGradle===beforeAgp || !rootGradle.includes('com.android.tools.build:gradle:8.9.1')){
+if(!rootGradle.includes('com.android.tools.build:gradle:8.9.1')){
   throw new Error('V68.12.0 AGP généré introuvable pour migration 8.9.1');
 }
 await writeFile(rootGradlePath,rootGradle,'utf8');
 
 const variablesPath=path.join(android,'variables.gradle');
 let variables=await readFile(variablesPath,'utf8');
-const beforeVariables=variables;
 variables=variables.replace(/compileSdkVersion\s*=\s*35/g,'compileSdkVersion = 36');
-if(variables===beforeVariables || !/compileSdkVersion\s*=\s*36/.test(variables)){
+if(!/compileSdkVersion\s*=\s*36/.test(variables)){
   throw new Error('V68.12.0 compileSdkVersion généré introuvable pour migration API 36');
 }
 // On conserve volontairement targetSdk tel quel : compiler avec API 36 ne change pas les règles runtime existantes.

@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "242774139081",
+    "project_id": "audify-753ce",
+    "storage_bucket": "audify-753ce.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:242774139081:android:b937e09986dc04b699ad18",
+        "android_client_info": {
+          "package_name": "com.nova.audify"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "242774139081-ip3daltse1t8163ecfgmbap1gsori4og.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nova.audify",
+            "certificate_hash": "22a2f9f4df364f949e0af31a67e7aba31a9544fe"
+          }
+        },
+        {
+          "client_id": "242774139081-j4jkhhnk8rj72094qrmhlkfhspof2p68.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nova.audify",
+            "certificate_hash": "9bfac7a1d6bb2f08f2cc16a6cd002832cee0822e"
+          }
+        },
+        {
+          "client_id": "242774139081-ifr0q9537jpnnvl6gjknn0qc9m5icok0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCyk_RNQuoFI8L50jDTHCO_nb6DSCtzQ5k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "242774139081-ifr0q9537jpnnvl6gjknn0qc9m5icok0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

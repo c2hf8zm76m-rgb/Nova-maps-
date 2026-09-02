@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    function base() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['schema','kind','key','payload','deleted','opId','clientTime','updatedAt'])
+        && d.schema == 1
+        && d.kind in ['like','recent','playlist','playlistItem','affinity','profile']
+        && d.key is string && d.key.size() > 0 && d.key.size() <= 700
+        && d.deleted is bool
+        && d.opId is string && d.opId.size() <= 80
+        && d.clientTime is int
+        && d.updatedAt == request.time;
+    }
+    function track(extra) {
+      let p = request.resource.data.payload;
+      return p.keys().hasOnly(['id','title','artist','thumbnail'].concat(extra))
+        && p.id is string && p.id.size() <= 256
+        && p.title is string && p.title.size() <= 500
+        && p.artist is string && p.artist.size() <= 500
+        && p.thumbnail is string && p.thumbnail.size() <= 2048;
+    }
+    function valid() {
+      let d = request.resource.data;
+      let p = d.payload;
+      return (d.kind == 'like' && track([]))
+        || (d.kind == 'recent' && track([]))
+        || (d.kind == 'playlist' && p.keys().hasOnly(['name']) && p.name is string && p.name.size() > 0 && p.name.size() <= 140)
+        || (d.kind == 'playlistItem' && track(['playlistId']) && p.playlistId is string && p.playlistId.size() <= 80)
+        || (d.kind == 'affinity' && p.keys().hasOnly(['bucket','value']) && p.bucket is string && p.bucket.size() <= 500 && p.value is int && p.value >= -1000000 && p.value <= 1000000)
+        || (d.kind == 'profile' && p.keys().hasOnly(['path','extension']) && p.path is string && p.path.size() <= 500 && p.extension is string && p.extension in ['', '.jpg', '.gif']);
+    }
+    match /users/{uid}/entries/{entry} {
+      allow read: if owner(uid);
+      allow create, update: if owner(uid) && base() && valid()
+        && entry == request.resource.data.kind + '_' + hashing.sha256(request.resource.data.kind + ':' + request.resource.data.key).toHexString().lower();
+      allow delete: if false;
+    }
+  }
+}
