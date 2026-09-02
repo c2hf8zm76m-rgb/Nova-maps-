@@ -8,6 +8,7 @@ const pkgDir=path.join(root,'android','app','src','main','java','com','nova','au
 const homePath=path.join(pkgDir,'NativeHomeActivity.java');
 const managerPath=path.join(pkgDir,'AudifyMonetizationManager.java');
 const premiumPath=path.join(pkgDir,'AudifyPremiumActivity.java');
+const splashPath=path.join(pkgDir,'AudifySplashActivity.java');
 
 function findMethod(source,signatures,label){
   for(const signature of signatures){
@@ -194,4 +195,35 @@ premium=premium.replace(
 premium=premium.replaceAll('AudifyMonetizationManager.get(this).isPremium()','AudifyMonetizationManager.isPremiumStatic(this)');
 await writeFile(premiumPath,premium,'utf8');
 
-console.log('Audify Android V68.12.35 : Device Compatibility Shield actif, Home sans Billing, Billing lazy/fail-safe, fallback anti-crash.');
+// -----------------------------------------------------------------------------
+// 4) XIAOMI / ANDROID 7-9 STARTUP SHIELD
+//    Le Pulse Splash V68.12.18 envoyait le lancement vers MainActivity, qui est
+//    une BridgeActivity Capacitor et initialise un WebView immédiatement. Sur un
+//    appareil ancien/MIUI avec WebView ou Chrome défaillant, cela peut fermer le
+//    processus avant même l'affichage du Home. Le démarrage devient 100 % natif:
+//    AudifySplashActivity -> NativeHomeActivity. MainActivity reste disponible
+//    pour les fonctions qui en ont besoin, mais n'est plus dans le chemin launch.
+// -----------------------------------------------------------------------------
+let splash=await readFile(splashPath,'utf8');
+splash=replaceMethod(splash,[
+  '    private void openAudify(){',
+  '    private void openAudify() {'
+],String.raw`    private void openAudify(){
+        if(opened||isFinishing())return;
+        opened=true;
+        if(equalizer!=null)equalizer.stop();
+        try{
+            Intent homeIntentV681235=new Intent(this,NativeHomeActivity.class);
+            homeIntentV681235.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(homeIntentV681235);
+            overridePendingTransition(android.R.anim.fade_in,android.R.anim.fade_out);
+            finish();
+        }catch(Throwable launchErrorV681235){
+            // Ne jamais fermer le splash si Android refuse exceptionnellement
+            // d'ouvrir le Home : on laisse le processus vivant et réessayable.
+            opened=false;
+        }
+    }`,'AudifySplashActivity.openAudify');
+await writeFile(splashPath,splash,'utf8');
+
+console.log('Audify Android V68.12.35 : Device Compatibility Shield actif, démarrage natif sans WebView/Billing/AdMob, Billing lazy/fail-safe et Home anti-crash.');
