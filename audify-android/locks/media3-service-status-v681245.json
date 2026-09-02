@@ -1,0 +1,5 @@
+{
+  "status": "building-direct-service-fallback",
+  "scope": "AudifyPlaybackService only",
+  "do_not_touch": ["karaoke", "splash", "NativeHomeActivity startup"]
+}
