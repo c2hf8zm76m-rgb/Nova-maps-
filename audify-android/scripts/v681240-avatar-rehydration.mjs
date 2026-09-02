@@ -20,7 +20,7 @@ function replaceOnce(source,from,to,label){
 
 async function patchAvatar(file){
   let src=await readFile(file,'utf8');
-  src=src.replace('import java.util.UUID;','import java.util.UUID;\nimport java.util.HashSet;\nimport java.util.Set;');
+  if(!src.includes('import java.util.HashSet;')) src=src.replace('import java.util.UUID;','import java.util.UUID;\nimport java.util.HashSet;\nimport java.util.Set;');
   src=insertOnce(src,'    private long retryAfter=0;','    private final Set<Runnable> listeners=new HashSet<>();\n','listeners avatar');
   src=insertOnce(src,'    /** Transport readiness, not merely presence of a local fallback portrait. */',`    public synchronized void addListener(Runnable listener){if(listener!=null)listeners.add(listener);}\n    public synchronized void removeListener(Runnable listener){listeners.remove(listener);}\n    private void changed(){java.util.ArrayList<Runnable> copy; synchronized(this){copy=new java.util.ArrayList<>(listeners);} main.post(()->{for(Runnable listener:copy)try{listener.run();}catch(Throwable ignored){}});}\n\n`,'API listeners avatar');
   src=src.replace('        return path.isEmpty()||(path.equals(p.getString("localPath",""))&&local(uid,ext).isFile());',
@@ -29,7 +29,7 @@ async function patchAvatar(file){
     '        message="Suppression de l’avatar en attente du cloud";retryAfter=0;changed();return true;');
   src=src.replace('if(saved){p.edit().remove("pending").remove("pendingFile").putString("localPath",path).commit();file.delete();message="Avatar envoyé ; synchronisation du profil en cours";}',
     'if(saved){p.edit().remove("pending").remove("pendingFile").putString("localPath",path).commit();file.delete();message="Avatar envoyé ; synchronisation du profil en cours";changed();}');
-  src=src.replace('p.edit().putString("localPath",path).commit();message="Avatar disponible dans le cloud";',
+  if(!src.includes('message="Avatar disponible dans le cloud";changed();')) src=src.replace('p.edit().putString("localPath",path).commit();message="Avatar disponible dans le cloud";',
     'p.edit().putString("localPath",path).commit();message="Avatar disponible dans le cloud";changed();');
   await writeFile(file,src,'utf8');
 }
@@ -49,4 +49,3 @@ let gradle=await readFile(path.join(root,'android/app/build.gradle'),'utf8');
 gradle=gradle.replace(/versionCode \d+/,'versionCode 681240').replace(/versionName "[^"]+"/,'versionName "68.12.40"');
 await writeFile(path.join(root,'android/app/build.gradle'),gradle,'utf8');
 console.log('Audify V68.12.40 : avatar cloud réhydraté après téléchargement, signal de rafraîchissement Home et migration du cache local.');
-
