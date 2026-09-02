@@ -19,6 +19,16 @@ if(!gradle.includes('firebase-bom'))gradle=replace(gradle,'dependencies {',`depe
     implementation 'androidx.credentials:credentials-play-services-auth:1.3.0'
     implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'`);
 await writeFile(path.join(root,'android/app/build.gradle'),gradle);
+if(!gradle.includes('protobuf-javalite:4.26.1')){
+  gradle=replace(gradle,"apply from: 'capacitor.build.gradle'",`// Firebase's protolite-well-known-types still collides with protobuf-javalite >= 4.27.
+// Keep the compatible 4.26.1 runtime until the upstream SDKs remove that overlap.
+configurations.configureEach {
+    resolutionStrategy.force 'com.google.protobuf:protobuf-javalite:4.26.1'
+}
+
+apply from: 'capacitor.build.gradle'`);
+  await writeFile(path.join(root,'android/app/build.gradle'),gradle);
+}
 let manifest=await readFile(path.join(root,'android/app/src/main/AndroidManifest.xml'),'utf8');
 if(!manifest.includes('android:name=".AudifyApplication"'))
   manifest=replace(manifest,'<application','<application android:name=".AudifyApplication"');
