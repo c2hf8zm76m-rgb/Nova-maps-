@@ -20,17 +20,20 @@ jobs:
       - uses: android-actions/setup-android@v3
       - name: Install Android platform/build tools
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
-      - name: Compile share + deep-link + audio-route overlay
+      - name: Compile Audify overlay + widget
         run: |
           set -euxo pipefail
           mkdir -p build/share/src/com/nova/audify build/share/classes build/share/dex
           cp audify-android/share-overlay/AudifyShareBootstrapProvider.java build/share/src/com/nova/audify/
           cp audify-android/share-overlay/AudifyDeepLinkBridge.java build/share/src/com/nova/audify/
           cp audify-android/share-overlay/AudifyAudioRouteIndicator.java build/share/src/com/nova/audify/
+          cp audify-android/share-overlay/AudifyWidgetProvider.java build/share/src/com/nova/audify/
           python3 - <<'PY'
           from pathlib import Path
           p=Path('build/share/src/com/nova/audify/AudifyShareBootstrapProvider.java')
           s=p.read_text(encoding='utf-8')
+
+          s=s.replace('''        if (app instanceof Application) {\n            ((Application) app).registerActivityLifecycleCallbacks(new ShareLifecycle());\n        }''','''        if (app instanceof Application) {\n            ((Application) app).registerActivityLifecycleCallbacks(new ShareLifecycle());\n        }\n        try { AudifyWidgetProvider.startTicker(app); } catch (Throwable ignored) {}''',1)
 
           old='''        @Override public void onActivityResumed(Activity activity) {\n            if (activity == null || !PLAYER_CLASS.equals(activity.getClass().getName())) return;\n            try { installShareButton(activity); } catch (Throwable ignored) {}\n        }'''
           new='''        @Override public void onActivityResumed(Activity activity) {\n            if (activity == null) return;\n            try { AudifyDeepLinkBridge.handle(activity); } catch (Throwable ignored) {}\n            if (!PLAYER_CLASS.equals(activity.getClass().getName())) return;\n            try { installShareButton(activity); } catch (Throwable ignored) {}\n            try { AudifyAudioRouteIndicator.attach(activity); } catch (Throwable ignored) {}\n        }'''
@@ -39,10 +42,8 @@ jobs:
           s=s.replace('''        @Override public void onActivityCreated(Activity a, Bundle b) {}''','''        @Override public void onActivityCreated(Activity a, Bundle b) { try { AudifyDeepLinkBridge.handle(a); } catch (Throwable ignored) {} }''',1)
           s=s.replace('''        @Override public void onActivityStarted(Activity a) {}''','''        @Override public void onActivityStarted(Activity a) { try { AudifyDeepLinkBridge.handle(a); } catch (Throwable ignored) {} }''',1)
 
-          old='''        panel.addView(menuButton(activity, "Snapchat", "Partager une carte Audify dans Snapchat", () -> {'''
-          s=s.replace(old,'''        panel.addView(menuButton(activity, "Snapchat", "Carte Audify + lien vers ce morceau", () -> {''',1)
-          old='''        panel.addView(menuButton(activity, "Instagram Story", "Créer une Story avec la carte Audify", () -> {'''
-          s=s.replace(old,'''        panel.addView(menuButton(activity, "Instagram Story", "Story + lien Audify prêt à coller", () -> {''',1)
+          s=s.replace('''        panel.addView(menuButton(activity, "Snapchat", "Partager une carte Audify dans Snapchat", () -> {''','''        panel.addView(menuButton(activity, "Snapchat", "Carte Audify + lien vers ce morceau", () -> {''',1)
+          s=s.replace('''        panel.addView(menuButton(activity, "Instagram Story", "Créer une Story avec la carte Audify", () -> {''','''        panel.addView(menuButton(activity, "Instagram Story", "Story + lien Audify prêt à coller", () -> {''',1)
 
           old='''        panel.addView(menuButton(activity, "Copier le texte", "Copier le titre et l’artiste", () -> {\n            copyShareText(activity, info);\n            dialog.dismiss();\n        }), spacedWrap(activity));'''
           new='''        panel.addView(menuButton(activity, "Copier le lien Audify", "Lien qui ouvre directement ce morceau dans Audify", () -> {\n            AudifyDeepLinkBridge.copyLink(activity, AudifyDeepLinkBridge.buildShareUrl(info.videoId, info.title, info.artist, info.thumbnail), true);\n            dialog.dismiss();\n        }), spacedWrap(activity));\n        panel.addView(menuButton(activity, "Copier le texte + lien", "Copier le titre, l’artiste et le lien Audify", () -> {\n            copyShareText(activity, info);\n            dialog.dismiss();\n        }), spacedWrap(activity));'''
@@ -63,44 +64,137 @@ jobs:
           new='''            String s = "🎧 " + info.title + (TextUtils.isEmpty(info.artist) ? "" : " — " + info.artist) + " · Audify\\n" + AudifyDeepLinkBridge.buildShareUrl(info.videoId, info.title, info.artist, info.thumbnail);'''
           if old not in s: raise SystemExit('copy text patch target missing')
           s=s.replace(old,new,1)
-
           p.write_text(s,encoding='utf-8')
           PY
+
           javac -source 8 -target 8 \
             -classpath "$ANDROID_SDK_ROOT/platforms/android-35/android.jar" \
             -d build/share/classes \
             build/share/src/com/nova/audify/AudifyShareBootstrapProvider.java \
             build/share/src/com/nova/audify/AudifyDeepLinkBridge.java \
-            build/share/src/com/nova/audify/AudifyAudioRouteIndicator.java
+            build/share/src/com/nova/audify/AudifyAudioRouteIndicator.java \
+            build/share/src/com/nova/audify/AudifyWidgetProvider.java
           jar cf build/share/share-overlay.jar -C build/share/classes .
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/d8" \
             --min-api 23 \
             --output build/share/dex \
             build/share/share-overlay.jar
-          test -s build/share/dex/classes.dex
           cp build/share/dex/classes.dex build/share/classes9.dex
-          sha256sum build/share/classes9.dex
-      - name: Package zipalign and apksigner
+
+      - name: Compile binary widget XML resources
         run: |
           set -euxo pipefail
-          mkdir -p build/share/tools/lib build/share/tools/lib64
-          cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" build/share/tools/
-          cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" build/share/tools/
-          cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/lib/apksigner.jar" build/share/tools/lib/
-          cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/lib64/libc++.so" build/share/tools/lib64/
-          chmod +x build/share/tools/zipalign build/share/tools/apksigner
-          LD_LIBRARY_PATH="$PWD/build/share/tools/lib64" build/share/tools/zipalign -h >/dev/null || true
-      - name: Upload share overlay dex
+          BT="$ANDROID_SDK_ROOT/build-tools/35.0.0"
+          mkdir -p build/widgetres/res/layout build/widgetres/res/xml build/widgetres/compiled build/widgetres/out
+          cat > build/widgetres/res/layout/audify_widget.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="horizontal"
+              android:gravity="center_vertical"
+              android:padding="10dp"
+              android:background="#EA0B0F16">
+              <ImageView
+                  android:id="@android:id/icon"
+                  android:layout_width="58dp"
+                  android:layout_height="58dp"
+                  android:scaleType="centerCrop"
+                  android:contentDescription="Audify" />
+              <LinearLayout
+                  android:layout_width="0dp"
+                  android:layout_height="match_parent"
+                  android:layout_weight="1"
+                  android:orientation="vertical"
+                  android:gravity="center_vertical"
+                  android:paddingLeft="10dp"
+                  android:paddingRight="6dp">
+                  <TextView
+                      android:id="@android:id/text1"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:text="Audify"
+                      android:textColor="#FFFFFFFF"
+                      android:textSize="15sp"
+                      android:textStyle="bold"
+                      android:maxLines="1"
+                      android:ellipsize="end" />
+                  <TextView
+                      android:id="@android:id/text2"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:text="Appuyer pour écouter"
+                      android:textColor="#FFABB4C2"
+                      android:textSize="12sp"
+                      android:maxLines="1"
+                      android:ellipsize="end" />
+              </LinearLayout>
+              <TextView
+                  android:id="@android:id/button1"
+                  android:layout_width="42dp"
+                  android:layout_height="match_parent"
+                  android:gravity="center"
+                  android:text="❮"
+                  android:textColor="#FFFFFFFF"
+                  android:textSize="21sp" />
+              <TextView
+                  android:id="@android:id/button2"
+                  android:layout_width="46dp"
+                  android:layout_height="match_parent"
+                  android:gravity="center"
+                  android:text="▶"
+                  android:textColor="#FFA8FF3F"
+                  android:textSize="22sp"
+                  android:textStyle="bold" />
+              <TextView
+                  android:id="@android:id/button3"
+                  android:layout_width="42dp"
+                  android:layout_height="match_parent"
+                  android:gravity="center"
+                  android:text="❯"
+                  android:textColor="#FFFFFFFF"
+                  android:textSize="21sp" />
+          </LinearLayout>
+          XML
+          cat > build/widgetres/res/xml/audify_widget_info.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+              android:minWidth="250dp"
+              android:minHeight="64dp"
+              android:minResizeWidth="180dp"
+              android:minResizeHeight="64dp"
+              android:targetCellWidth="4"
+              android:targetCellHeight="1"
+              android:updatePeriodMillis="0"
+              android:initialLayout="@layout/audify_widget"
+              android:resizeMode="horizontal|vertical"
+              android:widgetCategory="home_screen" />
+          XML
+          cat > build/widgetres/AndroidManifest.xml <<'XML'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.nova.audify.widgetstub"><application /></manifest>
+          XML
+          "$BT/aapt2" compile --dir build/widgetres/res -o build/widgetres/compiled/resources.zip
+          "$BT/aapt2" link -o build/widgetres/widget-res.apk \
+            -I "$ANDROID_SDK_ROOT/platforms/android-35/android.jar" \
+            --manifest build/widgetres/AndroidManifest.xml \
+            --min-sdk-version 23 --target-sdk-version 35 \
+            build/widgetres/compiled/resources.zip
+          python3 - <<'PY'
+          import zipfile, pathlib
+          apk=zipfile.ZipFile('build/widgetres/widget-res.apk')
+          out=pathlib.Path('build/widgetres/out')
+          out.mkdir(parents=True,exist_ok=True)
+          (out/'widget_layout.axml').write_bytes(apk.read('res/layout/audify_widget.xml'))
+          (out/'widget_info.axml').write_bytes(apk.read('res/xml/audify_widget_info.xml'))
+          PY
+
+      - name: Upload Audify widget overlay
         uses: actions/upload-artifact@v4
         with:
-          name: AudifyShareOverlay-DEX
-          path: build/share/classes9.dex
-          if-no-files-found: error
-          retention-days: 7
-      - name: Upload Android signing tools
-        uses: actions/upload-artifact@v4
-        with:
-          name: AudifyAndroidSigningTools
-          path: build/share/tools
+          name: AudifyWidgetOverlay
+          path: |
+            build/share/classes9.dex
+            build/widgetres/out/widget_layout.axml
+            build/widgetres/out/widget_info.axml
           if-no-files-found: error
           retention-days: 7
