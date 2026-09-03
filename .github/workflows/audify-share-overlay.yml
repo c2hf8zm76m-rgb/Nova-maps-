@@ -20,19 +20,20 @@ jobs:
       - uses: android-actions/setup-android@v3
       - name: Install Android platform/build tools
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
-      - name: Compile share + deep-link overlay
+      - name: Compile share + deep-link + audio-route overlay
         run: |
           set -euxo pipefail
           mkdir -p build/share/src/com/nova/audify build/share/classes build/share/dex
           cp audify-android/share-overlay/AudifyShareBootstrapProvider.java build/share/src/com/nova/audify/
           cp audify-android/share-overlay/AudifyDeepLinkBridge.java build/share/src/com/nova/audify/
+          cp audify-android/share-overlay/AudifyAudioRouteIndicator.java build/share/src/com/nova/audify/
           python3 - <<'PY'
           from pathlib import Path
           p=Path('build/share/src/com/nova/audify/AudifyShareBootstrapProvider.java')
           s=p.read_text(encoding='utf-8')
 
           old='''        @Override public void onActivityResumed(Activity activity) {\n            if (activity == null || !PLAYER_CLASS.equals(activity.getClass().getName())) return;\n            try { installShareButton(activity); } catch (Throwable ignored) {}\n        }'''
-          new='''        @Override public void onActivityResumed(Activity activity) {\n            if (activity == null) return;\n            try { AudifyDeepLinkBridge.handle(activity); } catch (Throwable ignored) {}\n            if (!PLAYER_CLASS.equals(activity.getClass().getName())) return;\n            try { installShareButton(activity); } catch (Throwable ignored) {}\n        }'''
+          new='''        @Override public void onActivityResumed(Activity activity) {\n            if (activity == null) return;\n            try { AudifyDeepLinkBridge.handle(activity); } catch (Throwable ignored) {}\n            if (!PLAYER_CLASS.equals(activity.getClass().getName())) return;\n            try { installShareButton(activity); } catch (Throwable ignored) {}\n            try { AudifyAudioRouteIndicator.attach(activity); } catch (Throwable ignored) {}\n        }'''
           if old not in s: raise SystemExit('lifecycle patch target missing')
           s=s.replace(old,new,1)
           s=s.replace('''        @Override public void onActivityCreated(Activity a, Bundle b) {}''','''        @Override public void onActivityCreated(Activity a, Bundle b) { try { AudifyDeepLinkBridge.handle(a); } catch (Throwable ignored) {} }''',1)
@@ -69,7 +70,8 @@ jobs:
             -classpath "$ANDROID_SDK_ROOT/platforms/android-35/android.jar" \
             -d build/share/classes \
             build/share/src/com/nova/audify/AudifyShareBootstrapProvider.java \
-            build/share/src/com/nova/audify/AudifyDeepLinkBridge.java
+            build/share/src/com/nova/audify/AudifyDeepLinkBridge.java \
+            build/share/src/com/nova/audify/AudifyAudioRouteIndicator.java
           jar cf build/share/share-overlay.jar -C build/share/classes .
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/d8" \
             --min-api 23 \
