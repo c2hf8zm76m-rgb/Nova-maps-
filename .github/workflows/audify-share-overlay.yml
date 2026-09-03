@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - 'audify-android/share-overlay/**'
+      - 'audify/open.html'
       - '.github/workflows/audify-share-overlay.yml'
 
 jobs:
@@ -19,14 +20,54 @@ jobs:
       - uses: android-actions/setup-android@v3
       - name: Install Android platform/build tools
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
-      - name: Compile share overlay
+      - name: Compile share + deep-link overlay
         run: |
           set -euxo pipefail
-          mkdir -p build/share/classes build/share/dex
+          mkdir -p build/share/src/com/nova/audify build/share/classes build/share/dex
+          cp audify-android/share-overlay/AudifyShareBootstrapProvider.java build/share/src/com/nova/audify/
+          cp audify-android/share-overlay/AudifyDeepLinkBridge.java build/share/src/com/nova/audify/
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('build/share/src/com/nova/audify/AudifyShareBootstrapProvider.java')
+          s=p.read_text(encoding='utf-8')
+
+          old='''        @Override public void onActivityResumed(Activity activity) {\n            if (activity == null || !PLAYER_CLASS.equals(activity.getClass().getName())) return;\n            try { installShareButton(activity); } catch (Throwable ignored) {}\n        }'''
+          new='''        @Override public void onActivityResumed(Activity activity) {\n            if (activity == null) return;\n            try { AudifyDeepLinkBridge.handle(activity); } catch (Throwable ignored) {}\n            if (!PLAYER_CLASS.equals(activity.getClass().getName())) return;\n            try { installShareButton(activity); } catch (Throwable ignored) {}\n        }'''
+          if old not in s: raise SystemExit('lifecycle patch target missing')
+          s=s.replace(old,new,1)
+
+          old='''        panel.addView(menuButton(activity, "Snapchat", "Partager une carte Audify dans Snapchat", () -> {'''
+          s=s.replace(old,'''        panel.addView(menuButton(activity, "Snapchat", "Carte Audify + lien vers ce morceau", () -> {''',1)
+          old='''        panel.addView(menuButton(activity, "Instagram Story", "Créer une Story avec la carte Audify", () -> {'''
+          s=s.replace(old,'''        panel.addView(menuButton(activity, "Instagram Story", "Story + lien Audify prêt à coller", () -> {''',1)
+
+          old='''        panel.addView(menuButton(activity, "Copier le texte", "Copier le titre et l’artiste", () -> {\n            copyShareText(activity, info);\n            dialog.dismiss();\n        }), spacedWrap(activity));'''
+          new='''        panel.addView(menuButton(activity, "Copier le lien Audify", "Lien qui ouvre directement ce morceau dans Audify", () -> {\n            AudifyDeepLinkBridge.copyLink(activity, AudifyDeepLinkBridge.buildShareUrl(info.videoId, info.title, info.artist, info.thumbnail), true);\n            dialog.dismiss();\n        }), spacedWrap(activity));\n        panel.addView(menuButton(activity, "Copier le texte + lien", "Copier le titre, l’artiste et le lien Audify", () -> {\n            copyShareText(activity, info);\n            dialog.dismiss();\n        }), spacedWrap(activity));'''
+          if old not in s: raise SystemExit('copy button patch target missing')
+          s=s.replace(old,new,1)
+
+          old='''        String caption = "🎧 J’écoute " + info.title + (TextUtils.isEmpty(info.artist) ? "" : " — " + info.artist) + " sur Audify";'''
+          new='''        String shareUrl = AudifyDeepLinkBridge.buildShareUrl(info.videoId, info.title, info.artist, info.thumbnail);\n        String caption = "🎧 J’écoute " + info.title + (TextUtils.isEmpty(info.artist) ? "" : " — " + info.artist) + " sur Audify\\n" + shareUrl;'''
+          if old not in s: raise SystemExit('caption patch target missing')
+          s=s.replace(old,new,1)
+
+          old='''                story.setPackage("com.instagram.android");\n                activity.grantUriPermission("com.instagram.android", uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);\n                activity.startActivity(story);'''
+          new='''                story.setPackage("com.instagram.android");\n                story.putExtra("source_application", activity.getPackageName());\n                story.putExtra("content_url", shareUrl);\n                activity.grantUriPermission("com.instagram.android", uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);\n                AudifyDeepLinkBridge.copyLink(activity, shareUrl, false);\n                Toast.makeText(activity, "Lien Audify copié · dans Instagram ajoute le sticker Lien puis colle.", Toast.LENGTH_LONG).show();\n                activity.startActivity(story);'''
+          if old not in s: raise SystemExit('instagram patch target missing')
+          s=s.replace(old,new,1)
+
+          old='''            String s = "🎧 " + info.title + (TextUtils.isEmpty(info.artist) ? "" : " — " + info.artist) + " · Audify";'''
+          new='''            String s = "🎧 " + info.title + (TextUtils.isEmpty(info.artist) ? "" : " — " + info.artist) + " · Audify\\n" + AudifyDeepLinkBridge.buildShareUrl(info.videoId, info.title, info.artist, info.thumbnail);'''
+          if old not in s: raise SystemExit('copy text patch target missing')
+          s=s.replace(old,new,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
           javac -source 8 -target 8 \
             -classpath "$ANDROID_SDK_ROOT/platforms/android-35/android.jar" \
             -d build/share/classes \
-            audify-android/share-overlay/AudifyShareBootstrapProvider.java
+            build/share/src/com/nova/audify/AudifyShareBootstrapProvider.java \
+            build/share/src/com/nova/audify/AudifyDeepLinkBridge.java
           jar cf build/share/share-overlay.jar -C build/share/classes .
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/d8" \
             --min-api 23 \
