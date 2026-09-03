@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#080b10">
+  <title>Ouvrir dans Audify</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#06080d;color:#fff}
+    body{min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 80% 18%,#6925b855 0,transparent 34%),radial-gradient(circle at 10% 85%,#a8ff3f33 0,transparent 34%),linear-gradient(145deg,#06080d,#0d1119 62%,#07090d)}
+    .card{width:min(440px,100%);padding:24px;border:1px solid #ffffff20;border-radius:30px;background:#121721dd;box-shadow:0 26px 80px #000b;backdrop-filter:blur(20px)}
+    .brand{font-weight:900;letter-spacing:.11em;font-size:14px;color:#a8ff3f}.cover{width:100%;aspect-ratio:1;border-radius:24px;object-fit:cover;margin:18px 0;background:linear-gradient(135deg,#6e2bc4,#1a2030 55%,#8bd62c);box-shadow:0 18px 46px #0008}
+    h1{margin:0;font-size:26px;line-height:1.12}.artist{margin:7px 0 22px;color:#aeb7c7;font-size:17px}.button{display:block;text-decoration:none;text-align:center;font-weight:900;font-size:17px;padding:16px 18px;border-radius:999px;background:#a8ff3f;color:#071007;box-shadow:0 10px 34px #a8ff3f33}.secondary{display:block;text-align:center;margin-top:15px;color:#b8c1d0;text-decoration:none;font-size:14px}.hint{margin:18px 2px 0;color:#788397;font-size:12px;line-height:1.45;text-align:center}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand">AUDIFY · MORCEAU PARTAGÉ</div>
+    <img class="cover" id="cover" alt="Pochette du morceau">
+    <h1 id="title">Morceau Audify</h1>
+    <div class="artist" id="artist">Ouvrir dans Audify</div>
+    <a class="button" id="open">▶ Ouvrir dans Audify</a>
+    <a class="secondary" id="youtube" target="_blank" rel="noopener">Écouter sur YouTube</a>
+    <div class="hint">Si Audify est installé sur Android, le bouton ouvre directement ce morceau dans l’application.</div>
+  </main>
+  <script>
+  (()=>{
+    const p=new URLSearchParams(location.search);
+    const v=p.get('v')||'';
+    const t=p.get('t')||'Morceau Audify';
+    const a=p.get('a')||'Artiste';
+    const th=p.get('th')||'';
+    document.getElementById('title').textContent=t;
+    document.getElementById('artist').textContent=a;
+    const cover=document.getElementById('cover');
+    if(th){cover.src=th}else{cover.removeAttribute('src')}
+    document.title=t+' · Audify';
+    const e=encodeURIComponent;
+    const intent='intent://open#Intent;scheme=audify;package=com.nova.audify;component=com.nova.audify/.NativeHomeActivity;'
+      +'S.audify_video_id='+e(v)+';S.audify_title='+e(t)+';S.audify_artist='+e(a)+';S.audify_thumbnail='+e(th)+';end';
+    const open=document.getElementById('open');
+    open.href=intent;
+    const yt=document.getElementById('youtube');
+    yt.href=v?'https://www.youtube.com/watch?v='+encodeURIComponent(v):'https://www.youtube.com/';
+    // Le clic sur un lien Story est déjà une action utilisateur. On tente donc
+    // l'ouverture immédiate, puis le bouton reste disponible si le navigateur la bloque.
+    if(/Android/i.test(navigator.userAgent) && v){setTimeout(()=>{location.href=intent},280)}
+  })();
+  </script>
+</body>
+</html>
