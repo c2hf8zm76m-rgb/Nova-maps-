@@ -1,0 +1,32 @@
+name: Export Android Sign Tools
+
+on:
+  push:
+    paths:
+      - '.github/workflows/export-android-sign-tools.yml'
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install build tools
+        run: sdkmanager 'build-tools;35.0.0'
+      - name: Package signer
+        run: |
+          set -eux
+          mkdir -p /tmp/android-sign-tools/lib
+          cp "$ANDROID_HOME/build-tools/35.0.0/apksigner" /tmp/android-sign-tools/
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" /tmp/android-sign-tools/lib/
+          cp "$ANDROID_HOME/build-tools/35.0.0/zipalign" /tmp/android-sign-tools/
+          chmod +x /tmp/android-sign-tools/apksigner /tmp/android-sign-tools/zipalign
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AndroidSignTools35
+          path: /tmp/android-sign-tools
+          retention-days: 1
