@@ -35,6 +35,8 @@ jobs:
           new='''        @Override public void onActivityResumed(Activity activity) {\n            if (activity == null) return;\n            try { AudifyDeepLinkBridge.handle(activity); } catch (Throwable ignored) {}\n            if (!PLAYER_CLASS.equals(activity.getClass().getName())) return;\n            try { installShareButton(activity); } catch (Throwable ignored) {}\n        }'''
           if old not in s: raise SystemExit('lifecycle patch target missing')
           s=s.replace(old,new,1)
+          s=s.replace('''        @Override public void onActivityCreated(Activity a, Bundle b) {}''','''        @Override public void onActivityCreated(Activity a, Bundle b) { try { AudifyDeepLinkBridge.handle(a); } catch (Throwable ignored) {} }''',1)
+          s=s.replace('''        @Override public void onActivityStarted(Activity a) {}''','''        @Override public void onActivityStarted(Activity a) { try { AudifyDeepLinkBridge.handle(a); } catch (Throwable ignored) {} }''',1)
 
           old='''        panel.addView(menuButton(activity, "Snapchat", "Partager une carte Audify dans Snapchat", () -> {'''
           s=s.replace(old,'''        panel.addView(menuButton(activity, "Snapchat", "Carte Audify + lien vers ce morceau", () -> {''',1)
