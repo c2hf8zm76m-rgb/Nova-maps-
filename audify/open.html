@@ -36,14 +36,12 @@
     if(th){cover.src=th}else{cover.removeAttribute('src')}
     document.title=t+' · Audify';
     const e=encodeURIComponent;
-    const intent='intent://open#Intent;scheme=audify;package=com.nova.audify;component=com.nova.audify/.NativeHomeActivity;'
+    const intent='intent://open#Intent;scheme=audify;package=com.nova.audify;component=com.nova.audify/.AudifySplashActivity;'
       +'S.audify_video_id='+e(v)+';S.audify_title='+e(t)+';S.audify_artist='+e(a)+';S.audify_thumbnail='+e(th)+';end';
     const open=document.getElementById('open');
     open.href=intent;
     const yt=document.getElementById('youtube');
     yt.href=v?'https://www.youtube.com/watch?v='+encodeURIComponent(v):'https://www.youtube.com/';
-    // Le clic sur un lien Story est déjà une action utilisateur. On tente donc
-    // l'ouverture immédiate, puis le bouton reste disponible si le navigateur la bloque.
     if(/Android/i.test(navigator.userAgent) && v){setTimeout(()=>{location.href=intent},280)}
   })();
   </script>
