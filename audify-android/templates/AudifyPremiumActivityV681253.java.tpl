@@ -62,7 +62,7 @@ public class AudifyPremiumActivity extends AppCompatActivity {
         sectionTitle.setGravity(Gravity.CENTER);
         sectionTitle.setPadding(0, dp(8), 0, dp(8));
         content.addView(sectionTitle, new LinearLayout.LayoutParams(-1, -2));
-        TextView sectionSub = text("Tout pour une expérience musicale unique.", 13.5f, false, MUTED);
+        TextView sectionSub = text("Supprime les publicités propres à l’interface Audify. Audify Premium ne remplace pas YouTube Premium.", 13.5f, false, MUTED);
         sectionSub.setGravity(Gravity.CENTER);
         sectionSub.setPadding(0, 0, 0, dp(12));
         content.addView(sectionSub, new LinearLayout.LayoutParams(-1, -2));
@@ -70,7 +70,7 @@ public class AudifyPremiumActivity extends AppCompatActivity {
         LinearLayout benefits = new LinearLayout(this);
         benefits.setOrientation(LinearLayout.VERTICAL);
         addBenefitRow(benefits,
-            benefit("AD", "Zéro publicité", "EXCLUSIF", ACCENT, Color.rgb(49, 70, 18)),
+            benefit("AD", "Sans publicités ajoutées par Audify", "EXCLUSIF", ACCENT, Color.rgb(49, 70, 18)),
             benefit("♫", "Karaoké sans pub", "EXCLUSIF", PURPLE, Color.rgb(40, 20, 62)));
         addBenefitRow(benefits,
             benefit("▣", "Bannière de profil\npersonnalisée", "EXCLUSIF", PURPLE, Color.rgb(36, 19, 62)),
