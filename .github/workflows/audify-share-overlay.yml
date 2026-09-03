@@ -35,10 +35,26 @@ jobs:
           test -s build/share/dex/classes.dex
           cp build/share/dex/classes.dex build/share/classes9.dex
           sha256sum build/share/classes9.dex
+      - name: Package zipalign and apksigner
+        run: |
+          set -euxo pipefail
+          mkdir -p build/share/tools/lib
+          cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" build/share/tools/
+          cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" build/share/tools/
+          cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/lib/apksigner.jar" build/share/tools/lib/
+          chmod +x build/share/tools/zipalign build/share/tools/apksigner
+          build/share/tools/zipalign -h >/dev/null || true
       - name: Upload share overlay dex
         uses: actions/upload-artifact@v4
         with:
           name: AudifyShareOverlay-DEX
           path: build/share/classes9.dex
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload Android signing tools
+        uses: actions/upload-artifact@v4
+        with:
+          name: AudifyAndroidSigningTools
+          path: build/share/tools
           if-no-files-found: error
           retention-days: 7
