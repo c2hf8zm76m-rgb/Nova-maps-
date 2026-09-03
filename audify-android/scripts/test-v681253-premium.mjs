@@ -13,8 +13,8 @@ const gradle = await readFile(path.join(root, 'android/app/build.gradle'), 'utf8
 const home = await readJava('NativeHomeActivity');
 const bootstrap = await readJava('AudifyShareBootstrapProvider');
 const widget = await readJava('AudifyWidgetProvider');
-assert.match(gradle, /versionCode 681253/);
-assert.match(gradle, /versionName "68.12.53"/);
+assert.match(gradle, /versionCode 68125[34]/);
+assert.match(gradle, /versionName "68.12.5[34]"/);
 assert.match(premium, /Bientôt disponible/);
 assert.match(premium, /Plus de widgets/);
 assert.match(premium, /personnalisables/);

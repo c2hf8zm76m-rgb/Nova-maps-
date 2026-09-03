@@ -1,4 +1,4 @@
-name: Build Audify Android V68.12.53
+name: Build Audify Android V68.12.54
 
 on:
   workflow_dispatch:
@@ -65,12 +65,12 @@ jobs:
       - name: Sync Capacitor Android
         working-directory: audify-android
         run: npx cap sync android
-      - name: Apply Audify native engine, Premium redesign and retained V46–52 features
+      - name: Apply Audify patches and album playlists without playback changes
         working-directory: audify-android
         run: npm run android:patch && npm run android:patch-native-search && npm run android:patch-hardening
-      - name: Verify startup, Premium preview and retained integrations
+      - name: Verify startup, Premium preview, album playlists and unchanged playback
         working-directory: audify-android
-        run: npm run test:startup && node scripts/test-v681253-premium.mjs
+        run: npm run test:startup && node scripts/test-v681253-premium.mjs && node scripts/test-v681254-albums.mjs
       - name: Build debug APK
         working-directory: audify-android/android
         run: |
@@ -82,15 +82,15 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk
-      - name: Prepare Audify V68.12.53 APK
+      - name: Prepare Audify V68.12.54 APK
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.53.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.54.apk
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.12.53-APK
-          path: audify-android/releases/Audify-V68.12.53.apk
+          name: Audify-V68.12.54-APK
+          path: audify-android/releases/Audify-V68.12.54.apk
           if-no-files-found: error
           retention-days: 30
       - name: Publish APK in repository
@@ -98,11 +98,11 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.12.53.apk
+          git add -f audify-android/releases/Audify-V68.12.54.apk
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.12.53 APK'
+          git commit -m 'Publish Audify V68.12.54 APK'
           git pull --rebase origin "${{ github.ref_name }}"
           git push origin HEAD:"${{ github.ref_name }}"

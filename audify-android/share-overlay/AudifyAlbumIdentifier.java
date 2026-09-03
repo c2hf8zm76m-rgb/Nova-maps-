@@ -396,6 +396,22 @@ public final class AudifyAlbumIdentifier {
         LinearLayout.LayoutParams cp = wrap(); cp.bottomMargin = dp(activity, 12);
         panel.addView(confidence, cp);
 
+        // V68.12.54: save references in Playlists; never changes the active queue.
+        final AudifyLibraryStore albumStore = new AudifyLibraryStore(activity);
+        final String albumKey = savedAlbumKey(album);
+        final String savedName = albumStore.findSavedAlbum(albumKey);
+        final java.util.concurrent.atomic.AtomicBoolean cancelled = new java.util.concurrent.atomic.AtomicBoolean();
+        dialog.setOnDismissListener(d -> cancelled.set(true));
+        TextView save = text(activity, savedName.isEmpty() ? "＋ Enregistrer dans mes playlists" : "✓ Album enregistré · Ouvrir", 14f, Color.rgb(190,255,113), true);
+        save.setGravity(Gravity.CENTER);
+        save.setMinHeight(dp(activity,48));
+        save.setPadding(dp(activity,12),dp(activity,12),dp(activity,12),dp(activity,12));
+        GradientDrawable sbg = new GradientDrawable();
+        sbg.setColor(Color.rgb(26,40,27)); sbg.setCornerRadius(dp(activity,18));
+        sbg.setStroke(dp(activity,1),Color.rgb(99,145,59)); save.setBackground(sbg);
+        LinearLayout.LayoutParams sp = fullWrap(); sp.bottomMargin=dp(activity,12);
+        panel.addView(save,sp);
+
         ScrollView scroll = new ScrollView(activity);
         scroll.setFillViewport(false);
         LinearLayout list = new LinearLayout(activity);
@@ -430,7 +446,15 @@ public final class AudifyAlbumIdentifier {
         panel.addView(note, np);
 
         play.setOnClickListener(v -> prepareAlbumQueue(activity, album, play, dialog));
-        dialog.setContentView(panel);
+        save.setOnClickListener(v -> {
+            String existing=albumStore.findSavedAlbum(albumKey);
+            if(!existing.isEmpty()) openSavedAlbum(activity,existing,dialog);
+            else prepareAlbumSave(activity,album,albumStore,save,play,dialog,cancelled);
+        });
+        // A scrollable sheet keeps both actions reachable on small screens / large fonts.
+        ScrollView sheet=new ScrollView(activity);
+        sheet.addView(panel,new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT));
+        dialog.setContentView(sheet);
         Window w = dialog.getWindow();
         if (w != null) {
             w.setBackgroundDrawableResource(android.R.color.transparent);
@@ -438,13 +462,84 @@ public final class AudifyAlbumIdentifier {
             WindowManager.LayoutParams p = new WindowManager.LayoutParams();
             p.copyFrom(w.getAttributes());
             p.width = Math.min(activity.getResources().getDisplayMetrics().widthPixels - dp(activity,24), dp(activity,450));
-            p.height = WindowManager.LayoutParams.WRAP_CONTENT;
+            panel.measure(View.MeasureSpec.makeMeasureSpec(p.width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));
+            p.height = Math.min(panel.getMeasuredHeight(),(int)(activity.getResources().getDisplayMetrics().heightPixels*.85f));
             p.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
             p.dimAmount = .74f;
             p.y = dp(activity, 14);
             w.setAttributes(p);
         }
         dialog.show();
+    }
+
+    private static String savedAlbumKey(AlbumInfo album) {
+        return !TextUtils.isEmpty(album.releaseId) ? "release:"+album.releaseId : "album:"+norm(album.artist)+"|"+norm(album.title);
+    }
+
+    private static void openSavedAlbum(Activity activity,String name,Dialog dialog) {
+        activity.startActivity(new Intent(activity,NativePlaylistActivity.class).putExtra("playlist",name));
+        dialog.dismiss();
+    }
+
+    private static void prepareAlbumSave(final Activity activity,final AlbumInfo album,final AudifyLibraryStore store,
+            final TextView button,final TextView play,final Dialog dialog,final java.util.concurrent.atomic.AtomicBoolean cancelled) {
+        button.setEnabled(false); button.setAlpha(.75f); button.setText("Préparation de la playlist…");
+        play.setEnabled(false); // Prevent two competing album searches, without pausing current playback.
+        NET.execute(() -> {
+            final ArrayList<AudifyLibraryStore.Track> found=new ArrayList<>();
+            final Set<String> ids=new HashSet<>();
+            try {
+                Class<?> cls=Class.forName(SEARCH_ENGINE);
+                Constructor<?> ctor=cls.getDeclaredConstructor();ctor.setAccessible(true);
+                Object engine=ctor.newInstance();
+                Method search=cls.getDeclaredMethod("search",String.class);search.setAccessible(true);
+                for(int i=0;i<album.tracks.size();i++) {
+                    if(cancelled.get()) return;
+                    final int number=i+1;
+                    MAIN.post(() -> {if(!cancelled.get()&&dialog.isShowing())button.setText("Recherche "+number+" / "+album.tracks.size()+"…");});
+                    // Reuse the exact existing resolver; no extractor or player modifications.
+                    Playable p=resolveYoutube(engine,search,album.tracks.get(i),album.title);
+                    if(p!=null&&ids.add(p.id)) found.add(new AudifyLibraryStore.Track(p.id,p.title,p.artist,p.thumbnail));
+                }
+            } catch(Exception ignored) {}
+            MAIN.post(() -> {
+                if(cancelled.get()||activity.isFinishing()||activity.isDestroyed()||!dialog.isShowing())return;
+                Runnable reset=() -> {button.setEnabled(true);button.setAlpha(1f);button.setText("＋ Réessayer l’enregistrement");play.setEnabled(true);};
+                if(found.isEmpty()) {
+                    reset.run();
+                    Toast.makeText(activity,"Aucun titre trouvé. Aucune playlist n’a été créée.",Toast.LENGTH_LONG).show();
+                    return;
+                }
+                Runnable save=() -> {
+                    if(cancelled.get()||activity.isFinishing()||activity.isDestroyed())return;
+                    try {
+                        JSONObject meta=new JSONObject().put("albumKey",savedAlbumKey(album)).put("title",album.title)
+                            .put("artist",album.artist).put("date",album.date).put("releaseId",album.releaseId)
+                            .put("totalCount",album.tracks.size());
+                        // Documented thumbnail endpoint: musicbrainz.org/doc/Cover_Art_Archive/API.
+                        String cover=album.releaseId.matches("[0-9a-fA-F-]{36}")
+                            ? "https://coverartarchive.org/release/"+album.releaseId+"/front-500" : found.get(0).thumbnail;
+                        meta.put("cover",cover);
+                        String name=store.saveAlbumPlaylist(meta,found);
+                        if(name.isEmpty()) {
+                            reset.run();
+                            Toast.makeText(activity,"Enregistrement impossible : vérifie le compte actif et l’espace disponible.",Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        button.setEnabled(true);button.setAlpha(1f);play.setEnabled(true);
+                        button.setText("✓ Album enregistré · Ouvrir");
+                        button.setOnClickListener(v -> openSavedAlbum(activity,name,dialog));
+                        Toast.makeText(activity,"Album ajouté dans Playlists · "+found.size()+" titres",Toast.LENGTH_LONG).show();
+                    } catch(Exception failure) {reset.run();Toast.makeText(activity,"Impossible d’enregistrer l’album.",Toast.LENGTH_LONG).show();}
+                };
+                if(found.size()<album.tracks.size()) {
+                    new android.app.AlertDialog.Builder(activity).setTitle("Album partiellement retrouvé")
+                        .setMessage(found.size()+" titres sur "+album.tracks.size()+" ont été retrouvés. Enregistrer uniquement ces titres, dans leur ordre d’origine ?")
+                        .setPositiveButton("Enregistrer ces titres",(d,w)->save.run())
+                        .setNegativeButton("Annuler",(d,w)->reset.run()).setOnCancelListener(d->reset.run()).show();
+                } else save.run();
+            });
+        });
     }
 
     private static void prepareAlbumQueue(final Activity activity, final AlbumInfo album, final TextView button, final Dialog dialog) {
