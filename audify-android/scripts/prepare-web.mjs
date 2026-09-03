@@ -17,7 +17,6 @@ await cp(path.join(root, 'manual-queue-ui-fix.js'), path.join(www, 'manual-queue
 await cp(path.join(root, 'remove-browser-install-ui.js'), path.join(www, 'remove-browser-install-ui.js'));
 await cp(path.join(root, 'native-search-v6711.js'), path.join(www, 'native-search-v6711.js'));
 
-// Android natif uniquement : aucun ancien Service Worker PWA ne doit pouvoir reprendre la main.
 const neutralizeServiceWorkers = async () => {
   const names = await readdir(www);
   const offenders = [];
@@ -52,13 +51,13 @@ const jsPatches = [
 
 const source = path.join(audify, 'index-v21.html');
 let html = await readFile(source, 'utf8');
-html = html.replace(/<title>[^<]*<\/title>/i, '<title>Audify Android V67.6 • Full Player + Media3</title>');
+html = html.replace(/<title>[^<]*<\/title>/i, '<title>Audify Android V68.12.56 • Album Redesign</title>');
 html = html.replace(
   /<meta name="viewport"[^>]*>/i,
   '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#070a0f">'
 );
 
-const runtimeGuard = `<script id="audify-android-runtime-guard-v676">
+const runtimeGuard = `<script id="audify-android-runtime-guard-v681256">
 (()=>{
   try{
     if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations){
@@ -77,7 +76,6 @@ const androidSearchCss = `
 html,body{margin:0;background:#070a0f!important;color:#fff}
 body{min-height:100%}
 .search-wrap{display:none!important;visibility:hidden!important;pointer-events:none!important}
-/* V67.6 uses the same horizontal queue UI as the current Audify web player. */
 #v64QueueRail{display:none!important}
 </style>`;
 
@@ -85,6 +83,7 @@ const css = [
   ...cssPatches.map(v => `<link rel="stylesheet" href="./v${v}-patch.css?v=android-v676">`),
   '<link rel="stylesheet" href="./v67-artist-images.css?v=android-v676">',
   '<link rel="stylesheet" href="./v67-queue-carousel.css?v=android-v676">',
+  '<link rel="stylesheet" href="./v68-album-redesign.css?v=android-v681256">',
   androidSearchCss
 ].join('');
 html = html.replace('</head>', css + '</head>');
@@ -100,9 +99,10 @@ const scripts = [
   '<script src="./native-open-player-v676.js?v=android-v676-open-player"><\/script>',
   '<script src="./manual-queue-ui-fix.js?v=android-v676-manual-queue"><\/script>',
   '<script src="./remove-browser-install-ui.js?v=android-v676-no-browser-install"><\/script>',
-  '<script src="./native-search-v6711.js?v=android-v676-search"><\/script>'
+  '<script src="./native-search-v6711.js?v=android-v676-search"><\/script>',
+  '<script src="./v68-album-redesign.js?v=android-v681256"><\/script>'
 ].join('');
 html = html.replace('</body>', scripts + '</body>');
 
 await writeFile(path.join(www, 'index.html'), html, 'utf8');
-console.log('Audify Android V67.6 : interface V67 complete + lecteur natif Media3 + ouverture automatique du player.');
+console.log('Audify Android V68.12.56 : Album Redesign activé dans le bundle Android.');
