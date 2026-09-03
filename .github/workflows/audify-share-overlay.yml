@@ -20,7 +20,8 @@ jobs:
       - uses: android-actions/setup-android@v3
       - name: Install Android platform/build tools
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
-      - name: Compile Audify overlay + widget
+
+      - name: Compile Audify overlay + widget + stats
         run: |
           set -euxo pipefail
           mkdir -p build/share/src/com/nova/audify build/share/classes build/share/dex
@@ -28,15 +29,18 @@ jobs:
           cp audify-android/share-overlay/AudifyDeepLinkBridge.java build/share/src/com/nova/audify/
           cp audify-android/share-overlay/AudifyAudioRouteIndicator.java build/share/src/com/nova/audify/
           cp audify-android/share-overlay/AudifyWidgetProvider.java build/share/src/com/nova/audify/
+          cp audify-android/share-overlay/AudifyStatsTracker.java build/share/src/com/nova/audify/
+          cp audify-android/share-overlay/AudifyStatsOverlay.java build/share/src/com/nova/audify/
+
           python3 - <<'PY'
           from pathlib import Path
           p=Path('build/share/src/com/nova/audify/AudifyShareBootstrapProvider.java')
           s=p.read_text(encoding='utf-8')
 
-          s=s.replace('''        if (app instanceof Application) {\n            ((Application) app).registerActivityLifecycleCallbacks(new ShareLifecycle());\n        }''','''        if (app instanceof Application) {\n            ((Application) app).registerActivityLifecycleCallbacks(new ShareLifecycle());\n        }\n        try { AudifyWidgetProvider.startTicker(app); } catch (Throwable ignored) {}''',1)
+          s=s.replace('''        if (app instanceof Application) {\n            ((Application) app).registerActivityLifecycleCallbacks(new ShareLifecycle());\n        }''','''        if (app instanceof Application) {\n            ((Application) app).registerActivityLifecycleCallbacks(new ShareLifecycle());\n        }\n        try { AudifyWidgetProvider.startTicker(app); } catch (Throwable ignored) {}\n        try { AudifyStatsTracker.start(app); } catch (Throwable ignored) {}''',1)
 
           old='''        @Override public void onActivityResumed(Activity activity) {\n            if (activity == null || !PLAYER_CLASS.equals(activity.getClass().getName())) return;\n            try { installShareButton(activity); } catch (Throwable ignored) {}\n        }'''
-          new='''        @Override public void onActivityResumed(Activity activity) {\n            if (activity == null) return;\n            try { AudifyDeepLinkBridge.handle(activity); } catch (Throwable ignored) {}\n            if (!PLAYER_CLASS.equals(activity.getClass().getName())) return;\n            try { installShareButton(activity); } catch (Throwable ignored) {}\n            try { AudifyAudioRouteIndicator.attach(activity); } catch (Throwable ignored) {}\n        }'''
+          new='''        @Override public void onActivityResumed(Activity activity) {\n            if (activity == null) return;\n            try { AudifyDeepLinkBridge.handle(activity); } catch (Throwable ignored) {}\n            if (!PLAYER_CLASS.equals(activity.getClass().getName())) return;\n            try { installShareButton(activity); } catch (Throwable ignored) {}\n            try { AudifyAudioRouteIndicator.attach(activity); } catch (Throwable ignored) {}\n            try { AudifyStatsOverlay.attach(activity); } catch (Throwable ignored) {}\n        }'''
           if old not in s: raise SystemExit('lifecycle patch target missing')
           s=s.replace(old,new,1)
           s=s.replace('''        @Override public void onActivityCreated(Activity a, Bundle b) {}''','''        @Override public void onActivityCreated(Activity a, Bundle b) { try { AudifyDeepLinkBridge.handle(a); } catch (Throwable ignored) {} }''',1)
@@ -73,13 +77,16 @@ jobs:
             build/share/src/com/nova/audify/AudifyShareBootstrapProvider.java \
             build/share/src/com/nova/audify/AudifyDeepLinkBridge.java \
             build/share/src/com/nova/audify/AudifyAudioRouteIndicator.java \
-            build/share/src/com/nova/audify/AudifyWidgetProvider.java
+            build/share/src/com/nova/audify/AudifyWidgetProvider.java \
+            build/share/src/com/nova/audify/AudifyStatsTracker.java \
+            build/share/src/com/nova/audify/AudifyStatsOverlay.java
           jar cf build/share/share-overlay.jar -C build/share/classes .
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/d8" \
             --min-api 23 \
             --output build/share/dex \
             build/share/share-overlay.jar
           cp build/share/dex/classes.dex build/share/classes9.dex
+          sha256sum build/share/classes9.dex
 
       - name: Compile binary widget XML resources
         run: |
@@ -188,7 +195,7 @@ jobs:
           (out/'widget_info.axml').write_bytes(apk.read('res/xml/audify_widget_info.xml'))
           PY
 
-      - name: Upload Audify widget overlay
+      - name: Upload Audify widget + stats overlay
         uses: actions/upload-artifact@v4
         with:
           name: AudifyWidgetOverlay
