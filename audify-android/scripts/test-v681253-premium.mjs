@@ -1,0 +1,45 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const main = path.join(root, 'android/app/src/main');
+const java = path.join(main, 'java/com/nova/audify');
+const readJava = name => readFile(path.join(java, `${name}.java`), 'utf8');
+const premium = await readJava('AudifyPremiumActivity');
+const manifest = await readFile(path.join(main, 'AndroidManifest.xml'), 'utf8');
+const gradle = await readFile(path.join(root, 'android/app/build.gradle'), 'utf8');
+const home = await readJava('NativeHomeActivity');
+const bootstrap = await readJava('AudifyShareBootstrapProvider');
+const widget = await readJava('AudifyWidgetProvider');
+assert.match(gradle, /versionCode 681253/);
+assert.match(gradle, /versionName "68.12.53"/);
+assert.match(premium, /Bientôt disponible/);
+assert.match(premium, /Plus de widgets/);
+assert.match(premium, /personnalisables/);
+assert.equal((premium.match(/\bbenefit\("/g) || []).length, 10);
+assert.ok(!premium.includes('launchPremiumPurchase'));
+assert.ok(!premium.includes('preparePremiumBilling'));
+assert.ok(!premium.includes('marginLp(dp(300)'));
+assert.match(premium, /fontScale > 1.2f/);
+assert.equal((manifest.match(/android.intent.category.LAUNCHER/g) || []).length, 1);
+assert.equal((manifest.match(/android:name="\.AudifyShareBootstrapProvider"/g) || []).length, 1);
+assert.equal((manifest.match(/android:name="\.AudifyWidgetProvider"/g) || []).length, 1);
+assert.match(manifest, /@xml\/audify_widget_info/);
+assert.match(manifest, /android:scheme="audify"/);
+assert.match(home, /activateAudifyMediaSessionV681246/);
+assert.equal((home.match(/void onNewIntent\(/g) || []).length, 1);
+assert.match(widget, /R\.layout\.audify_widget/);
+assert.ok(!widget.includes('0x7f0b0025'));
+for (const name of ['AudifyAlbumIdentifier', 'AudifyAudioRouteIndicator', 'AudifyStatsOverlay']) {
+  assert.ok((await readJava(name)).includes(`class ${name}`));
+  assert.ok(bootstrap.includes(`${name}.attach(activity)`));
+}
+assert.match(bootstrap, /AudifyStatsTracker.start\(app\)/);
+assert.match(bootstrap, /AudifyWidgetProvider.startTicker\(app\)/);
+assert.match(bootstrap, /Copier le lien Audify/);
+assert.match(await readJava('AudifyStatsTracker'), /doubleValue\(\) \* 1000.0/);
+assert.match(await readFile(path.join(main, 'res/layout/audify_widget.xml'), 'utf8'), /@android:id\/button2/);
+assert.match(await readFile(path.join(main, 'res/xml/audify_widget_info.xml'), 'utf8'), /@layout\/audify_widget/);
+console.log('Audify V68.12.53: Premium preview, responsive layout and retained V46–52 integrations passed.');
