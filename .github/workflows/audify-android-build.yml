@@ -1,4 +1,4 @@
-name: Build Audify Android V68.12.46
+name: Build Audify Android V68.12.57
 
 on:
   workflow_dispatch:
@@ -48,7 +48,7 @@ jobs:
       - name: Sync Capacitor Android
         working-directory: audify-android
         run: npx cap sync android
-      - name: Apply Audify native engine and V68.12.46 Premium/Redmi patch
+      - name: Apply Audify native engine and V68.12.57 Album + Playlist reference UI
         working-directory: audify-android
         run: npm run android:patch
       - name: Build debug APK
@@ -56,26 +56,26 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
-      - name: Prepare Audify V68.12.46 APK
+      - name: Prepare Audify V68.12.57 APK
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.46-PREMIUM-REDMI.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.57-ALBUM-PLAYLIST-REFERENCE.apk
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.12.46-PREMIUM-REDMI-APK
-          path: audify-android/releases/Audify-V68.12.46-PREMIUM-REDMI.apk
+          name: Audify-V68.12.57-ALBUM-PLAYLIST-REFERENCE-APK
+          path: audify-android/releases/Audify-V68.12.57-ALBUM-PLAYLIST-REFERENCE.apk
           if-no-files-found: error
           retention-days: 30
       - name: Publish APK in repository
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.12.46-PREMIUM-REDMI.apk
+          git add -f audify-android/releases/Audify-V68.12.57-ALBUM-PLAYLIST-REFERENCE.apk
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.12.46 Premium Redmi APK'
+          git commit -m 'Publish Audify V68.12.57 Album Playlist Reference APK'
           git pull --rebase origin main
           git push origin HEAD:main
