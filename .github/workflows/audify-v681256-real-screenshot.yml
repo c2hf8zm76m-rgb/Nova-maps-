@@ -1,0 +1,129 @@
+name: Audify V68.12.56 Real APK Screenshot
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'audify/v68-album-redesign.*'
+      - 'audify-android/share-overlay/AudifyInstantAlbum*.java'
+      - 'audify-android/share-overlay/AudifyAlbumIdentifier.java'
+      - 'audify-android/scripts/v681256-native-album-redesign.mjs'
+      - 'audify-android/scripts/prepare-web.mjs'
+      - 'audify-android/package.json'
+      - '.github/workflows/audify-v681256-real-screenshot.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  screenshot:
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        run: sdkmanager 'platforms;android-36'
+
+      - name: Build real Audify APK
+        working-directory: audify-android
+        run: |
+          npm install
+          npm run prepare:web
+          npx cap add android
+          npx cap sync android
+          npm run android:patch
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Prepare screenshot folder
+        run: mkdir -p real-screenshots
+
+      - name: Run real APK in Android emulator and capture
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          disk-size: 6000M
+          script: |
+            set -euxo pipefail
+            APK='audify-android/android/app/build/outputs/apk/debug/app-debug.apk'
+            adb install -r "$APK"
+            adb shell pm grant com.nova.audify android.permission.POST_NOTIFICATIONS || true
+            adb root || true
+            adb wait-for-device
+
+            adb shell monkey -p com.nova.audify -c android.intent.category.LAUNCHER 1 || true
+            sleep 4
+
+            adb shell am start-foreground-service \
+              -n com.nova.audify/.AudifyPlaybackService \
+              -a com.nova.audify.LOAD \
+              --es videoId 'dQw4w9WgXcQ' \
+              --es title 'Intro Rolex' \
+              --es artist 'WeRenoi' \
+              --es thumbnail 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg' || true
+            sleep 2
+            adb shell am start -n com.nova.audify/.NativePlayerActivity || true
+
+            FOUND=0
+            for n in $(seq 1 20); do
+              sleep 2
+              adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || true
+              adb pull /sdcard/window.xml real-screenshots/window.xml >/dev/null 2>&1 || true
+              if grep -q 'Ouvrir cet album' real-screenshots/window.xml 2>/dev/null; then
+                FOUND=1
+                break
+              fi
+            done
+
+            adb exec-out screencap -p > real-screenshots/01-real-player-album-square.png
+
+            if [ "$FOUND" = '1' ]; then
+              python3 - <<'PY'
+            import re, subprocess
+            xml=open('real-screenshots/window.xml',encoding='utf-8',errors='ignore').read()
+            m=re.search(r'content-desc="Ouvrir cet album"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"',xml)
+            if not m:
+                m=re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"[^>]*content-desc="Ouvrir cet album"',xml)
+            if m:
+                x1,y1,x2,y2=map(int,m.groups())
+                x=(x1+x2)//2; y=(y1+y2)//2
+                subprocess.run(['adb','shell','input','tap',str(x),str(y)],check=False)
+            PY
+              sleep 4
+              adb exec-out screencap -p > real-screenshots/02-real-album-sheet.png
+              adb shell uiautomator dump /sdcard/window-album.xml >/dev/null 2>&1 || true
+              adb pull /sdcard/window-album.xml real-screenshots/window-album.xml >/dev/null 2>&1 || true
+            else
+              echo 'Album tile was not detected in time' > real-screenshots/ALBUM_TILE_NOT_FOUND.txt
+            fi
+
+            adb shell dumpsys activity activities > real-screenshots/activity.txt || true
+            adb shell dumpsys window > real-screenshots/window-dump.txt || true
+
+      - name: Upload real APK and screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: Audify-V68.12.56-REAL-APK-AND-SCREENSHOTS
+          path: |
+            audify-android/android/app/build/outputs/apk/debug/app-debug.apk
+            real-screenshots/**
+          if-no-files-found: error
+          retention-days: 7
