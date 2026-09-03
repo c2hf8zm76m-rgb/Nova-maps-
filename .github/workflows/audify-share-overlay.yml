@@ -38,12 +38,13 @@ jobs:
       - name: Package zipalign and apksigner
         run: |
           set -euxo pipefail
-          mkdir -p build/share/tools/lib
+          mkdir -p build/share/tools/lib build/share/tools/lib64
           cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" build/share/tools/
           cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" build/share/tools/
           cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/lib/apksigner.jar" build/share/tools/lib/
+          cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/lib64/libc++.so" build/share/tools/lib64/
           chmod +x build/share/tools/zipalign build/share/tools/apksigner
-          build/share/tools/zipalign -h >/dev/null || true
+          LD_LIBRARY_PATH="$PWD/build/share/tools/lib64" build/share/tools/zipalign -h >/dev/null || true
       - name: Upload share overlay dex
         uses: actions/upload-artifact@v4
         with:
