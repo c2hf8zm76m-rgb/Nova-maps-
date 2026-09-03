@@ -47,7 +47,10 @@ public final class AudifyAlbumPlaylistModel {
         }
         if (unique.isEmpty()) throw new IllegalArgumentException("Aucun titre trouvé");
 
-        Set<String> names = AudifyLibraryModel.playlists(state).keySet();
+        Set<String> names = new HashSet<>(AudifyLibraryModel.playlists(state).keySet());
+        // Cloud merges can disambiguate equal names with [UUID] in the visible map.
+        // Reserve their raw names too, so the newly returned name always resolves.
+        for (JSONObject record : state.active("playlist")) names.add(record.getJSONObject("payload").getString("name"));
         String base = bounded("Album — " + title, 120), name = base;
         for (int n = 2; names.contains(name); n++) name = base + " (" + n + ")";
         String playlist = AudifyLibraryModel.create(state, name, cloud);

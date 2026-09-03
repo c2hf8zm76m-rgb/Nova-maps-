@@ -66,6 +66,13 @@ public final class AudifyAlbumPlaylistModelTest {
         check(ordinary.pendingCount()==0,"guest save stays local");
         check(AudifyAlbumPlaylistModel.find(new AudifySyncState(""),"release:two").isEmpty(),"separate account state has no album data");
 
+        AudifySyncState colliding=new AudifySyncState("");
+        colliding.change("playlist","first-cloud-id",new JSONObject().put("name","Album — Shared name"),false,false);
+        colliding.change("playlist","second-cloud-id",new JSONObject().put("name","Album — Shared name"),false,false);
+        String collision=AudifyAlbumPlaylistModel.save(colliding,album("release:collision","Shared name"),tracks(),false);
+        check(collision.equals("Album — Shared name (2)"),"reserve raw names hidden by cloud disambiguation");
+        check(AudifyAlbumPlaylistModel.orderedTracks(colliding,collision).size()==3,"returned name opens the saved playlist after cloud name collisions");
+
         AudifySyncState validation=new AudifySyncState("");String empty=validation.save();
         try{AudifyAlbumPlaylistModel.save(validation,album("release:empty","Empty"),Collections.emptyList(),true);throw new AssertionError("empty accepted");}catch(IllegalArgumentException expected){}
         check(validation.save().equals(empty),"empty album creates nothing");
