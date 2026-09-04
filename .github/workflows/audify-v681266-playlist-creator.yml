@@ -120,14 +120,14 @@ jobs:
           print(json.dumps(report,indent=2))
           PY
 
-      - name: Verify compiled playlist marker in DEX
+      - name: Verify compiled playlist creator in DEX
         run: |
           set -euxo pipefail
           rm -rf /tmp/audify-v681266 && mkdir -p /tmp/audify-v681266
           cd /tmp/audify-v681266
           unzip -q "$GITHUB_WORKSPACE/audify-android/releases/Audify-V68.12.66-PLAYLIST-CREATOR.apk" 'classes*.dex'
           strings classes*.dex > strings.txt
-          grep -q 'AUDIFY_V681266_PLAYLIST_CREATOR' strings.txt
+          grep -q 'AudifyCreatePlaylistDialog' strings.txt
           grep -q 'Crée ta playlist' strings.txt
           grep -q 'Une playlist porte déjà ce nom' strings.txt
 
