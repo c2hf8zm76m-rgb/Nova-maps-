@@ -1,4 +1,4 @@
-name: Build Audify Android V68.12.58
+name: Build Audify Android V68.12.58.1
 
 on:
   workflow_dispatch:
@@ -51,31 +51,50 @@ jobs:
       - name: Apply Audify native engine and V68.12.58 Multi-Source Album Intelligence
         working-directory: audify-android
         run: npm run android:patch
+      - name: Restore V68.12.54 full Android dependency footprint
+        working-directory: audify-android
+        run: node scripts/v6812581-full-package-restore.mjs
       - name: Build debug APK
         working-directory: audify-android/android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
-      - name: Prepare Audify V68.12.58 APK
+      - name: Prepare Audify V68.12.58.1 APK
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.58-MULTISOURCE-ALBUM-INTELLIGENCE.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.58.1-MULTISOURCE-FULL.apk
+          python - <<'PY'
+          import os,zipfile
+          p='audify-android/releases/Audify-V68.12.58.1-MULTISOURCE-FULL.apk'
+          z=zipfile.ZipFile(p)
+          dex=[n for n in z.namelist() if n.startswith('classes') and n.endswith('.dex')]
+          libs=[n for n in z.namelist() if n.startswith('lib/')]
+          print('APK bytes:',os.path.getsize(p))
+          print('DEX count:',len(dex),dex)
+          print('Native libs:',len(libs))
+          if os.path.getsize(p) < 18500000:
+              raise SystemExit('APK unexpectedly too small: full package dependencies are missing')
+          if len(dex) < 8:
+              raise SystemExit('Expected at least 8 DEX files for the full package')
+          if not libs:
+              raise SystemExit('Expected native libraries in full package')
+          PY
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.12.58-MULTISOURCE-ALBUM-INTELLIGENCE-APK
-          path: audify-android/releases/Audify-V68.12.58-MULTISOURCE-ALBUM-INTELLIGENCE.apk
+          name: Audify-V68.12.58.1-MULTISOURCE-FULL-APK
+          path: audify-android/releases/Audify-V68.12.58.1-MULTISOURCE-FULL.apk
           if-no-files-found: error
           retention-days: 30
       - name: Publish APK in repository
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.12.58-MULTISOURCE-ALBUM-INTELLIGENCE.apk
+          git add -f audify-android/releases/Audify-V68.12.58.1-MULTISOURCE-FULL.apk
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.12.58 Multi-Source Album Intelligence APK'
+          git commit -m 'Publish Audify V68.12.58.1 Multi-Source Full APK'
           git pull --rebase origin main
           git push origin HEAD:main
