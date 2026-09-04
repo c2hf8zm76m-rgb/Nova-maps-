@@ -1,4 +1,4 @@
-name: Build Audify Android V68.12.58.1
+name: Diagnose Audify Android V68.12.58.1 package
 
 on:
   workflow_dispatch:
@@ -11,10 +11,10 @@ on:
       - '.github/workflows/audify-android-build.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: audify-android-release-${{ github.ref }}
+  group: audify-android-diagnostic-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -51,50 +51,40 @@ jobs:
       - name: Apply Audify native engine and V68.12.58 Multi-Source Album Intelligence
         working-directory: audify-android
         run: npm run android:patch
-      - name: Restore V68.12.54 full Android dependency footprint
+      - name: Restore V68.12.54 Android dependency footprint
         working-directory: audify-android
         run: node scripts/v6812581-full-package-restore.mjs
-      - name: Build debug APK
+      - name: Build diagnostic APK
         working-directory: audify-android/android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
-      - name: Prepare Audify V68.12.58.1 APK
+      - name: Prepare diagnostic APK and report
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.58.1-MULTISOURCE-FULL.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.58.1-DIAGNOSTIC.apk
           python - <<'PY'
-          import os,zipfile
-          p='audify-android/releases/Audify-V68.12.58.1-MULTISOURCE-FULL.apk'
+          import os,zipfile,json
+          p='audify-android/releases/Audify-V68.12.58.1-DIAGNOSTIC.apk'
           z=zipfile.ZipFile(p)
-          dex=[n for n in z.namelist() if n.startswith('classes') and n.endswith('.dex')]
-          libs=[n for n in z.namelist() if n.startswith('lib/')]
-          print('APK bytes:',os.path.getsize(p))
-          print('DEX count:',len(dex),dex)
-          print('Native libs:',len(libs))
-          if os.path.getsize(p) < 18500000:
-              raise SystemExit('APK unexpectedly too small: full package dependencies are missing')
-          if len(dex) < 8:
-              raise SystemExit('Expected at least 8 DEX files for the full package')
-          if not libs:
-              raise SystemExit('Expected native libraries in full package')
+          names=z.namelist()
+          report={
+            'bytes':os.path.getsize(p),
+            'dex':[n for n in names if n.startswith('classes') and n.endswith('.dex')],
+            'native_libs':[n for n in names if n.startswith('lib/')],
+            'res_count':sum(n.startswith('res/') for n in names),
+            'entries':len(names),
+            'assets_public_count':sum(n.startswith('assets/public/') for n in names),
+          }
+          print(json.dumps(report,indent=2))
+          open('audify-android/releases/V68.12.58.1-DIAGNOSTIC-REPORT.json','w').write(json.dumps(report,indent=2))
           PY
-      - name: Upload APK artifact
+      - name: Upload diagnostic APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.12.58.1-MULTISOURCE-FULL-APK
-          path: audify-android/releases/Audify-V68.12.58.1-MULTISOURCE-FULL.apk
+          name: Audify-V68.12.58.1-DIAGNOSTIC
+          path: |
+            audify-android/releases/Audify-V68.12.58.1-DIAGNOSTIC.apk
+            audify-android/releases/V68.12.58.1-DIAGNOSTIC-REPORT.json
           if-no-files-found: error
-          retention-days: 30
-      - name: Publish APK in repository
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.12.58.1-MULTISOURCE-FULL.apk
-          if git diff --cached --quiet; then
-            echo 'APK unchanged'
-            exit 0
-          fi
-          git commit -m 'Publish Audify V68.12.58.1 Multi-Source Full APK'
-          git pull --rebase origin main
-          git push origin HEAD:main
+          retention-days: 2
