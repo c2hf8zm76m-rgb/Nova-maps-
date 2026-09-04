@@ -1,0 +1,142 @@
+name: Audify V68.12.58 Stable Overlay Probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/audify-v58-stable-overlay-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current repository with history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Save V68.12.58 targeted overlay
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/v58/scripts /tmp/v58/share-overlay
+          cp audify-android/scripts/v681256-native-album-redesign.mjs /tmp/v58/scripts/
+          cp audify-android/scripts/v681257-reference-album-playlist-ui.mjs /tmp/v58/scripts/
+          cp audify-android/scripts/v681258-multisource-album-intelligence.mjs /tmp/v58/scripts/
+          cp audify-android/share-overlay/AudifyAlbumIdentifier.java /tmp/v58/share-overlay/
+          cp audify-android/share-overlay/AudifyInstantAlbumArtwork.java /tmp/v58/share-overlay/
+          cp audify-android/share-overlay/AudifyInstantAlbumLibrary.java /tmp/v58/share-overlay/
+          cp audify-android/share-overlay/AudifyInstantAlbumMetadata.java /tmp/v58/share-overlay/
+          cp audify-android/share-overlay/AudifyInstantAlbumResolver.java /tmp/v58/share-overlay/
+          cp audify-android/share-overlay/AudifyInstantAlbums.java /tmp/v58/share-overlay/
+      - name: Restore last complete pre-V56 Android source chain
+        run: |
+          git checkout 16d204b60b09a894b90815dfb6d0a818159c90b0 -- audify-android
+          cp /tmp/v58/scripts/* audify-android/scripts/
+          cp /tmp/v58/share-overlay/* audify-android/share-overlay/
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android API 36
+        run: sdkmanager "platforms;android-36"
+      - name: Install stable dependencies
+        working-directory: audify-android
+        run: npm install
+      - name: Prepare stable web bundle
+        working-directory: audify-android
+        run: npm run prepare:web
+      - name: Generate Android project
+        working-directory: audify-android
+        run: npx cap add android
+      - name: Sync Android project
+        working-directory: audify-android
+        run: npx cap sync android
+      - name: Apply complete stable native chain
+        working-directory: audify-android
+        run: npm run android:patch
+      - name: Apply V68.12.58 Album overlay only
+        working-directory: audify-android
+        run: |
+          node scripts/v681256-native-album-redesign.mjs
+          node scripts/v681257-reference-album-playlist-ui.mjs
+          node scripts/v681258-multisource-album-intelligence.mjs
+      - name: Build stable-overlay APK
+        working-directory: audify-android/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+      - name: Validate stable and V58 feature footprint
+        run: |
+          python - <<'PY'
+          import os,re,zipfile,json,sys
+          p='audify-android/android/app/build/outputs/apk/debug/app-debug.apk'
+          z=zipfile.ZipFile(p)
+          names=z.namelist()
+          dex=[n for n in names if re.fullmatch(r'classes\d*\.dex',n)]
+          libs=[n for n in names if n.startswith('lib/') and n.endswith('.so')]
+          res=[n for n in names if n.startswith('res/')]
+          assets=[n for n in names if n.startswith('assets/')]
+          pat=re.compile(rb'Lcom/nova/audify/[A-Za-z0-9_$]+;')
+          audify=set(); blob=b''
+          for n in dex:
+              d=z.read(n); blob+=d
+              audify.update(x.decode('ascii','ignore') for x in pat.findall(d))
+          required=[
+            'Lcom/nova/audify/AudifyAccountStore;',
+            'Lcom/nova/audify/AudifyFirebaseSync;',
+            'Lcom/nova/audify/AudifyShareBootstrapProvider;',
+            'Lcom/nova/audify/AudifyStartupController;',
+            'Lcom/nova/audify/AudifyStatsOverlay;',
+            'Lcom/nova/audify/AudifyStatsTracker;',
+            'Lcom/nova/audify/AudifyWidgetProvider;',
+            'Lcom/nova/audify/NativeKaraokeActivity;',
+            'Lcom/nova/audify/NativeLibraryActivity;',
+            'Lcom/nova/audify/NativePlayerActivity;',
+            'Lcom/nova/audify/AudifyInstantAlbums;',
+            'Lcom/nova/audify/AudifyInstantAlbumMetadata;',
+            'Lcom/nova/audify/AudifyPlaylistReferenceDialog;'
+          ]
+          missing=[x for x in required if x not in audify]
+          markers={
+            'v58_metadata_marker': b'AUDIFY_INSTANT_ALBUM_METADATA_V681258' in blob,
+            'musicbrainz': b'musicbrainz' in blob.lower(),
+            'apple_itunes': b'itunes' in blob.lower(),
+            'collections_audify': b'Collections Audify' in blob,
+          }
+          report={
+            'apk_bytes':os.path.getsize(p),
+            'zip_entries':len(names),
+            'dex_count':len(dex),
+            'native_lib_count':len(libs),
+            'res_count':len(res),
+            'assets_count':len(assets),
+            'audify_class_descriptors':len(audify),
+            'missing_required_classes':missing,
+            'feature_markers':markers,
+          }
+          print(json.dumps(report,indent=2,ensure_ascii=False))
+          open('/tmp/audify-v58-stable-overlay-report.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
+          if os.path.getsize(p) < 19000000: sys.exit('APK below 19,000,000 bytes: stable footprint not restored')
+          if len(dex) < 8: sys.exit('Expected at least 8 DEX files')
+          if len(libs) < 4: sys.exit('Expected the four stable native DataStore libraries')
+          if len(audify) < 500: sys.exit('Too few Audify class descriptors for stable+V58 build')
+          if missing: sys.exit('Missing stable/feature classes: '+', '.join(missing))
+          if not all(markers.values()): sys.exit('V68.12.58 multi-source markers incomplete')
+          PY
+      - name: Upload validated probe APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Audify-V68.12.58-STABLE-OVERLAY-PROBE
+          path: |
+            audify-android/android/app/build/outputs/apk/debug/app-debug.apk
+            /tmp/audify-v58-stable-overlay-report.json
+          retention-days: 3
