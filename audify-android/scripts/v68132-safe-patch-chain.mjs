@@ -27,6 +27,7 @@ for(const script of [
   'scripts/v68131-clickable-album-tracks.mjs',
   'scripts/v681311-album-track-state-fix.mjs',
   'scripts/v68133-album-playlist-save-fix.mjs',
+  'scripts/v68140-album-intelligence2.mjs',
   'scripts/v68132-restore-exact-gradient-a-splash.mjs',
   'scripts/v681322-android12-splash-theme-fix.mjs',
   'scripts/v681321-splash-safety-lock.mjs'
@@ -34,4 +35,4 @@ for(const script of [
   execSync(`node ${script}`,{cwd:root,stdio:'inherit',shell:true});
 }
 
-console.log('Audify V68.13.3 safe patch chain complete: album playlist save fixed, Pulse Splash excluded, Gradient-A locked.');
+console.log('Audify V68.14 safe patch chain complete: Album Intelligence 2.0 + album playlist save + Gradient-A splash lock.');
