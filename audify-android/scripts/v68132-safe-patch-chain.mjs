@@ -27,6 +27,7 @@ for(const script of [
   'scripts/v68131-clickable-album-tracks.mjs',
   'scripts/v681311-album-track-state-fix.mjs',
   'scripts/v68132-restore-exact-gradient-a-splash.mjs',
+  'scripts/v681322-android12-splash-theme-fix.mjs',
   'scripts/v681321-splash-safety-lock.mjs'
 ]){
   execSync(`node ${script}`,{cwd:root,stdio:'inherit',shell:true});
