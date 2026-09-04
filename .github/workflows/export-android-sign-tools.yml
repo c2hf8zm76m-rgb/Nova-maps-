@@ -30,3 +30,5 @@ jobs:
           name: AndroidSignTools35
           path: /tmp/android-sign-tools
           retention-days: 1
+
+# 2026-09-04: export signer tools for Audify V68.12.56 exact-base package
