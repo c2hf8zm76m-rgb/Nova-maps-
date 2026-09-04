@@ -1,0 +1,25 @@
+{
+  "version": "V68.14",
+  "bytes": 15821044,
+  "dex": [
+    "classes.dex",
+    "classes2.dex",
+    "classes3.dex",
+    "classes4.dex",
+    "classes5.dex",
+    "classes6.dex",
+    "classes7.dex"
+  ],
+  "album_intelligence_2": true,
+  "youtube_art_track_evidence": true,
+  "album_playlist_save_fix": true,
+  "real_gradient_a_marker": true,
+  "gradient_view": true,
+  "clickable_album_tracks": true,
+  "synthetic_album_fallback": false,
+  "pulse_tagline": false,
+  "pulse_loading": false,
+  "pulse_equalizer": false,
+  "pulse_ring": false,
+  "pulse_logo_shell": false
+}
