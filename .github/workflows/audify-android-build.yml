@@ -1,4 +1,4 @@
-name: Build Audify Android V68.13.1 Clickable Album Tracks
+name: Build Audify Android V68.13.2 Gradient-A Splash Locked
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: audify-android-v68131-${{ github.ref }}
+  group: audify-android-v68132-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -54,66 +54,75 @@ jobs:
         working-directory: audify-android
         run: npx cap sync android
 
-      - name: Apply Audify native engine and V68.13.1 clickable album tracks
+      - name: Apply Audify engine, clickable tracks, then restore real splash
         working-directory: audify-android
-        run: npm run android:patch
+        run: |
+          npm run android:patch
+          node scripts/v68131-clickable-album-tracks.mjs
+          node scripts/v681311-album-track-state-fix.mjs
+          node scripts/v68132-restore-exact-gradient-a-splash.mjs
+          node scripts/v681321-splash-safety-lock.mjs
 
-      - name: Build V68.13.1 APK
+      - name: Build V68.13.2 APK
         working-directory: audify-android/android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Prepare V68.13.1 APK and verification report
+      - name: Prepare V68.13.2 APK and permanent splash verification
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.13.1-CLICKABLE-ALBUM-TRACKS.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.13.2-GRADIENT-A-SPLASH-LOCKED.apk
           python - <<'PY'
           import json, os, re, zipfile
-          p='audify-android/releases/Audify-V68.13.1-CLICKABLE-ALBUM-TRACKS.apk'
+          p='audify-android/releases/Audify-V68.13.2-GRADIENT-A-SPLASH-LOCKED.apk'
           with zipfile.ZipFile(p) as z:
-              names=z.namelist()
-              dex=[n for n in names if re.fullmatch(r'classes\d*\.dex',n)]
-              runtime_marker=b'audify-track-pending'
-              open_album='Ouvrir cet album'.encode('utf-8')
-              clickable='Lire '.encode('utf-8')
+              dex=[n for n in z.namelist() if re.fullmatch(r'classes\d*\.dex',n)]
               blobs=[z.read(n) for n in dex]
-              report={
-                  'version':'V68.13.1',
-                  'bytes':os.path.getsize(p),
-                  'dex':dex,
-                  'clickable_album_tracks_runtime_marker_compiled':any(runtime_marker in b for b in blobs),
-                  'open_album_action_compiled':any(open_album in b for b in blobs),
-                  'track_play_action_compiled':any(clickable in b for b in blobs),
-              }
-          if not report['clickable_album_tracks_runtime_marker_compiled']:
-              raise SystemExit('V68.13.1 clickable album track runtime marker missing from compiled APK')
-          if not report['track_play_action_compiled']:
-              raise SystemExit('V68.13.1 track play action missing from compiled APK')
-          print(json.dumps(report,indent=2))
-          open('audify-android/releases/V68.13.1-CLICKABLE-ALBUM-TRACKS-REPORT.json','w').write(json.dumps(report,indent=2))
+              all_dex=b''.join(blobs)
+          required={
+              'real_gradient_a_marker':b'AUDIFY_V6812652_EXACT_GRADIENT_A_SPLASH',
+              'gradient_view':b'AudifyGradientMarkView',
+              'clickable_album_tracks':b'audify-track-pending',
+          }
+          forbidden={
+              'pulse_tagline':'VOTRE MUSIQUE PREND VIE'.encode(),
+              'pulse_loading':'Préparation de votre musique'.encode(),
+              'pulse_equalizer':b'EqualizerView',
+              'pulse_ring':b'startRingPulse',
+              'launcher_logo_in_splash':b'Logo Audify',
+          }
+          report={'version':'V68.13.2','bytes':os.path.getsize(p),'dex':dex}
+          for k,v in required.items(): report[k]=v in all_dex
+          for k,v in forbidden.items(): report[k]=v in all_dex
+          missing=[k for k in required if not report[k]]
+          bad=[k for k in forbidden if report[k]]
+          if missing: raise SystemExit('Required Audify markers missing: '+', '.join(missing))
+          if bad: raise SystemExit('FORBIDDEN old Pulse Splash detected: '+', '.join(bad))
+          print(json.dumps(report,indent=2,ensure_ascii=False))
+          open('audify-android/releases/V68.13.2-GRADIENT-A-SPLASH-LOCKED-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
           PY
 
-      - name: Upload V68.13.1 APK artifact
+      - name: Upload V68.13.2 APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.13.1-CLICKABLE-ALBUM-TRACKS-APK
+          name: Audify-V68.13.2-GRADIENT-A-SPLASH-LOCKED-APK
           path: |
-            audify-android/releases/Audify-V68.13.1-CLICKABLE-ALBUM-TRACKS.apk
-            audify-android/releases/V68.13.1-CLICKABLE-ALBUM-TRACKS-REPORT.json
+            audify-android/releases/Audify-V68.13.2-GRADIENT-A-SPLASH-LOCKED.apk
+            audify-android/releases/V68.13.2-GRADIENT-A-SPLASH-LOCKED-REPORT.json
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish V68.13.1 APK in repository
+      - name: Publish V68.13.2 APK in repository
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.13.1-CLICKABLE-ALBUM-TRACKS.apk
-          git add -f audify-android/releases/V68.13.1-CLICKABLE-ALBUM-TRACKS-REPORT.json
+          git add -f audify-android/releases/Audify-V68.13.2-GRADIENT-A-SPLASH-LOCKED.apk
+          git add -f audify-android/releases/V68.13.2-GRADIENT-A-SPLASH-LOCKED-REPORT.json
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.13.1 Clickable Album Tracks APK'
+          git commit -m 'Publish Audify V68.13.2 Gradient-A Splash Locked APK'
           git pull --rebase origin main
           git push origin HEAD:main
