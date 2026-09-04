@@ -54,14 +54,9 @@ jobs:
         working-directory: audify-android
         run: npx cap sync android
 
-      - name: Apply Audify engine, clickable tracks, then restore real splash
+      - name: Apply safe patch chain without legacy Pulse Splash
         working-directory: audify-android
-        run: |
-          npm run android:patch
-          node scripts/v68131-clickable-album-tracks.mjs
-          node scripts/v681311-album-track-state-fix.mjs
-          node scripts/v68132-restore-exact-gradient-a-splash.mjs
-          node scripts/v681321-splash-safety-lock.mjs
+        run: node scripts/v68132-safe-patch-chain.mjs
 
       - name: Build V68.13.2 APK
         working-directory: audify-android/android
@@ -78,8 +73,7 @@ jobs:
           p='audify-android/releases/Audify-V68.13.2-GRADIENT-A-SPLASH-LOCKED.apk'
           with zipfile.ZipFile(p) as z:
               dex=[n for n in z.namelist() if re.fullmatch(r'classes\d*\.dex',n)]
-              blobs=[z.read(n) for n in dex]
-              all_dex=b''.join(blobs)
+              all_dex=b''.join(z.read(n) for n in dex)
           required={
               'real_gradient_a_marker':b'AUDIFY_V6812652_EXACT_GRADIENT_A_SPLASH',
               'gradient_view':b'AudifyGradientMarkView',
@@ -90,7 +84,7 @@ jobs:
               'pulse_loading':'Préparation de votre musique'.encode(),
               'pulse_equalizer':b'EqualizerView',
               'pulse_ring':b'startRingPulse',
-              'launcher_logo_in_splash':b'Logo Audify',
+              'pulse_logo_shell':b'logoShell',
           }
           report={'version':'V68.13.2','bytes':os.path.getsize(p),'dex':dex}
           for k,v in required.items(): report[k]=v in all_dex
