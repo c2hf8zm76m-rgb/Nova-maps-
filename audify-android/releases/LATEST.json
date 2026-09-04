@@ -1,0 +1,8 @@
+{
+  "latest": "V68.13",
+  "channel": "stable",
+  "release_manifest": "V68.13-HYBRID-ALBUM-ORIGINAL-SIZE.json",
+  "apk": "Audify-V68.13-HYBRID-ALBUM-ORIGINAL-SIZE.apk",
+  "sha256": "dec1a1b6952f602345081974117335f9b8b93f036d1dda41e01b19d9105c5162",
+  "status": "official-current-update"
+}
