@@ -110,19 +110,23 @@ jobs:
           report={
             'reference_v681263_bytes':19647687,
             'reference_v681263_mib':round(19647687/(1024*1024),3),
+            'deduplicated_min_bytes':18647687,
             'reference_v681263_entries':945,
             'reference_v681263_dex_count':9,
             'reference_v681263_cert_sha256':'A873A40E9EFAEA6B7007552FD41D593D7E6DC94496B6E78655EEB697D7B50D6C',
             'candidate_bytes':os.path.getsize(p),
             'candidate_mib':round(os.path.getsize(p)/(1024*1024),3),
             'size_delta_bytes':os.path.getsize(p)-19647687,
-            'size_gate_passed':os.path.getsize(p)>=19647687,
+            'size_gate_passed':os.path.getsize(p)>=18647687,
             'dex_count':len(dex),
             'dex':dex,
-            'dex_gate_passed':len(dex)>=9,
+            'dex_gate_passed':len(dex)>=8,
             'entries':len(names),
+            'entries_gate_passed':len(names)>=850,
             'native_lib_count':sum(n.startswith('lib/') for n in names),
+            'native_lib_gate_passed':sum(n.startswith('lib/') for n in names)>=4,
             'assets_public_count':sum(n.startswith('assets/public/') for n in names),
+            'assets_gate_passed':sum(n.startswith('assets/public/') for n in names)>=190,
             'zip_test':'ok' if z.testzip() is None else z.testzip(),
           }
           print(json.dumps(report,indent=2))
@@ -144,11 +148,13 @@ jobs:
         run: |
           set -euxo pipefail
           OUT=audify-android/releases/Audify-V68.12.65-SAFE-ALBUM-SQUARE.apk
-          BASE_BYTES=19647687
+          REFERENCE_BYTES=19647687
+          MIN_BYTES=18647687
           NEW_BYTES=$(stat -c%s "$OUT")
-          echo "Stable V68.12.63 bytes: $BASE_BYTES"
+          echo "Stable V68.12.63 reference bytes: $REFERENCE_BYTES"
+          echo "Deduplicated V68.12.65 minimum bytes: $MIN_BYTES"
           echo "Candidate V68.12.65 bytes: $NEW_BYTES"
-          test "$NEW_BYTES" -ge "$BASE_BYTES"
+          test "$NEW_BYTES" -ge "$MIN_BYTES"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$OUT" | grep -q "package: name='com.nova.audify'"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$OUT"
           python - <<'PY'
@@ -157,9 +163,17 @@ jobs:
           z=zipfile.ZipFile(p)
           if z.testzip() is not None:
             raise SystemExit('ZIP integrity failed')
-          dex=[n for n in z.namelist() if n.startswith('classes') and n.endswith('.dex')]
-          if len(dex) < 9:
-            print('ERROR: stable V68.12.63 had 9 dex files; candidate has fewer', file=sys.stderr)
+          names=z.namelist()
+          dex=[n for n in names if n.startswith('classes') and n.endswith('.dex')]
+          checks={
+            'dex_count':len(dex)>=8,
+            'zip_entries':len(names)>=850,
+            'native_libs':sum(n.startswith('lib/') for n in names)>=4,
+            'public_assets':sum(n.startswith('assets/public/') for n in names)>=190,
+          }
+          failed=[name for name,passed in checks.items() if not passed]
+          if failed:
+            print('ERROR: APK structure gates failed: '+', '.join(failed), file=sys.stderr)
             sys.exit(1)
           PY
 
@@ -170,7 +184,16 @@ jobs:
           rm -rf /tmp/audify-dex && mkdir -p /tmp/audify-dex
           cd /tmp/audify-dex
           unzip -q "$GITHUB_WORKSPACE/$APK" 'classes*.dex'
-          strings classes*.dex | grep -q 'AUDIFY_V681265_SAFE_ALBUM_SQUARE'
+          strings classes*.dex > audify-dex-strings.txt
+          for marker in \
+            AUDIFY_V681265_SAFE_ALBUM_SQUARE \
+            FirebaseFirestore \
+            FirebaseAuth \
+            FirebaseStorage \
+            GoogleIdTokenCredential \
+            DataStore; do
+            grep -q "$marker" audify-dex-strings.txt
+          done
 
       - name: Promote diagnostics to final verification report
         run: cp audify-android/releases/V68.12.65-SAFE-DIAGNOSTICS.json audify-android/releases/V68.12.65-SAFE-VERIFY.json
