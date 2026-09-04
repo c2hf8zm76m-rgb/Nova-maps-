@@ -59,6 +59,10 @@ jobs:
         working-directory: audify-android
         run: npm run android:patch
 
+      - name: Restore validated Audify Intro Morph animation
+        working-directory: audify-android
+        run: node scripts/v6812651-restore-intro-morph.mjs
+
       - name: Apply ONLY V68.12.65 safe album square
         working-directory: audify-android
         run: node scripts/v681265-safe-album-square.mjs
@@ -78,6 +82,10 @@ jobs:
           grep -q 'showAlbum(a,current,s,false)' "$P/AudifyInstantAlbums.java"
           grep -q 'AudifyInstantAlbumArtwork.load(a,album,tile,s.thumb)' "$P/AudifyInstantAlbums.java"
           grep -q 'detect(a,n,false)' "$P/AudifyInstantAlbums.java"
+          grep -q 'AUDIFY_V6812651_RESTORE_INTRO_MORPH' "$P/AudifySplashActivity.java"
+          grep -q 'class MorphLogoView extends View' "$P/AudifySplashActivity.java"
+          ! grep -q 'R.drawable.audify_launcher' "$P/AudifySplashActivity.java"
+          grep -q '@drawable/audify_modern_mark' android/app/src/main/res/values-v31/audify_splash_theme.xml
           if grep -q 'AUDIFY_V681263_RED_SQUARE_PROOF' "$P/NativePlayerActivity.java"; then
             echo 'ERROR: old 190dp proof overlay still present'
             exit 1
@@ -185,6 +193,7 @@ jobs:
           cd /tmp/audify-dex
           unzip -q "$GITHUB_WORKSPACE/$APK" 'classes*.dex'
           strings classes*.dex > audify-dex-strings.txt
+          grep -q 'AUDIFY_V6812651_RESTORE_INTRO_MORPH' audify-dex-strings.txt
           for marker in \
             AUDIFY_V681265_SAFE_ALBUM_SQUARE \
             FirebaseFirestore \
