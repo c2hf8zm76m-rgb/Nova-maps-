@@ -128,8 +128,8 @@ jobs:
           unzip -q "$GITHUB_WORKSPACE/audify-android/releases/Audify-V68.12.66-PLAYLIST-CREATOR.apk" 'classes*.dex'
           strings classes*.dex > strings.txt
           grep -q 'AudifyCreatePlaylistDialog' strings.txt
-          grep -q 'Crée ta playlist' strings.txt
-          grep -q 'Une playlist porte déjà ce nom' strings.txt
+          grep -q 'NOUVELLE PLAYLIST' strings.txt
+          grep -q 'Ex. Rap du soir' strings.txt
 
       - name: Upload verified APK
         uses: actions/upload-artifact@v4
