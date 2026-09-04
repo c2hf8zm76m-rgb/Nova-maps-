@@ -74,7 +74,7 @@ jobs:
           with zipfile.ZipFile(p) as z:
               names=z.namelist()
               dex=[n for n in names if re.fullmatch(r'classes\d*\.dex',n)]
-              marker=b'AUDIFY_V68131_CLICKABLE_ALBUM_TRACKS'
+              runtime_marker=b'audify-track-pending'
               open_album='Ouvrir cet album'.encode('utf-8')
               clickable='Lire '.encode('utf-8')
               blobs=[z.read(n) for n in dex]
@@ -82,12 +82,12 @@ jobs:
                   'version':'V68.13.1',
                   'bytes':os.path.getsize(p),
                   'dex':dex,
-                  'clickable_album_tracks_marker_compiled':any(marker in b for b in blobs),
+                  'clickable_album_tracks_runtime_marker_compiled':any(runtime_marker in b for b in blobs),
                   'open_album_action_compiled':any(open_album in b for b in blobs),
                   'track_play_action_compiled':any(clickable in b for b in blobs),
               }
-          if not report['clickable_album_tracks_marker_compiled']:
-              raise SystemExit('V68.13.1 clickable album track marker missing from compiled APK')
+          if not report['clickable_album_tracks_runtime_marker_compiled']:
+              raise SystemExit('V68.13.1 clickable album track runtime marker missing from compiled APK')
           if not report['track_play_action_compiled']:
               raise SystemExit('V68.13.1 track play action missing from compiled APK')
           print(json.dumps(report,indent=2))
