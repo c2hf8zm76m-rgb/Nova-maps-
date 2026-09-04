@@ -1,0 +1,21 @@
+{
+  "version": "V68.13.2",
+  "bytes": 15817991,
+  "dex": [
+    "classes.dex",
+    "classes2.dex",
+    "classes3.dex",
+    "classes4.dex",
+    "classes5.dex",
+    "classes6.dex",
+    "classes7.dex"
+  ],
+  "real_gradient_a_marker": true,
+  "gradient_view": true,
+  "clickable_album_tracks": true,
+  "pulse_tagline": false,
+  "pulse_loading": false,
+  "pulse_equalizer": false,
+  "pulse_ring": false,
+  "pulse_logo_shell": false
+}
