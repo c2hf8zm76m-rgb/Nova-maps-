@@ -1,0 +1,151 @@
+name: Build Audify V68.12.65 Safe Album Square
+
+on:
+  push:
+    branches:
+      - audify/v68.12.65-safe-album-square
+    paths:
+      - 'audify/**'
+      - 'audify-android/**'
+      - '.github/workflows/audify-v681265-safe-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audify-v681265-safe-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout isolated feature branch
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android API and build tools
+        run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+
+      - name: Install dependencies
+        working-directory: audify-android
+        run: npm install
+
+      - name: Prepare stable V68.12.63 web UI
+        working-directory: audify-android
+        run: npm run prepare:web
+
+      - name: Generate and sync Android project
+        working-directory: audify-android
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Apply unchanged V68.12.63 native patch chain
+        working-directory: audify-android
+        run: npm run android:patch
+
+      - name: Apply ONLY V68.12.65 safe album square
+        working-directory: audify-android
+        run: node scripts/v681265-safe-album-square.mjs
+
+      - name: Restore full stable dependency footprint
+        working-directory: audify-android
+        run: node scripts/v6812581-full-package-restore.mjs
+
+      - name: Source safety audit before Gradle
+        working-directory: audify-android
+        run: |
+          set -euxo pipefail
+          P=android/app/src/main/java/com/nova/audify
+          grep -q 'AUDIFY_V681265_SAFE_ALBUM_SQUARE' "$P/AudifyInstantAlbums.java"
+          grep -q 'Gravity.TOP|Gravity.CENTER_HORIZONTAL' "$P/AudifyInstantAlbums.java"
+          grep -q 'lp.topMargin=dp(a,80)' "$P/AudifyInstantAlbums.java"
+          grep -q 'showAlbum(a,current,s,false)' "$P/AudifyInstantAlbums.java"
+          grep -q 'AudifyInstantAlbumArtwork.load(a,album,tile,s.thumb)' "$P/AudifyInstantAlbums.java"
+          grep -q 'detect(a,n,false)' "$P/AudifyInstantAlbums.java"
+          if grep -q 'AUDIFY_V681263_RED_SQUARE_PROOF' "$P/NativePlayerActivity.java"; then
+            echo 'ERROR: old 190dp proof overlay still present'
+            exit 1
+          fi
+
+      - name: Compile APK with Gradle
+        working-directory: audify-android/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Verify APK structure, package and minimum size
+        run: |
+          set -euxo pipefail
+          SRC=audify-android/android/app/build/outputs/apk/debug/app-debug.apk
+          OUT=audify-android/releases/Audify-V68.12.65-SAFE-ALBUM-SQUARE.apk
+          mkdir -p audify-android/releases
+          cp "$SRC" "$OUT"
+
+          # User-approved stable V68.12.63 reference: 19,647,687 bytes.
+          BASE_BYTES=19647687
+          NEW_BYTES=$(stat -c%s "$OUT")
+          echo "Stable V68.12.63 bytes: $BASE_BYTES"
+          echo "Candidate V68.12.65 bytes: $NEW_BYTES"
+          test "$NEW_BYTES" -ge "$BASE_BYTES"
+
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$OUT" | grep -q "package: name='com.nova.audify'"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$OUT"
+
+          python - <<'PY'
+          import json, os, zipfile, sys
+          p='audify-android/releases/Audify-V68.12.65-SAFE-ALBUM-SQUARE.apk'
+          z=zipfile.ZipFile(p)
+          names=z.namelist()
+          dex=[n for n in names if n.startswith('classes') and n.endswith('.dex')]
+          report={
+            'reference_v681263_bytes':19647687,
+            'candidate_bytes':os.path.getsize(p),
+            'candidate_mib':round(os.path.getsize(p)/(1024*1024),3),
+            'dex_count':len(dex),
+            'dex':dex,
+            'entries':len(names),
+            'native_lib_count':sum(n.startswith('lib/') for n in names),
+            'assets_public_count':sum(n.startswith('assets/public/') for n in names),
+            'size_gate_passed':os.path.getsize(p)>=19647687,
+          }
+          print(json.dumps(report,indent=2))
+          if len(dex) < 9:
+            print('ERROR: stable V68.12.63 had 9 dex files; candidate has fewer', file=sys.stderr)
+            sys.exit(1)
+          open('audify-android/releases/V68.12.65-SAFE-VERIFY.json','w').write(json.dumps(report,indent=2))
+          PY
+
+      - name: Verify compiled feature marker inside DEX
+        run: |
+          set -euxo pipefail
+          APK=audify-android/releases/Audify-V68.12.65-SAFE-ALBUM-SQUARE.apk
+          rm -rf /tmp/audify-dex && mkdir -p /tmp/audify-dex
+          cd /tmp/audify-dex
+          unzip -q "$GITHUB_WORKSPACE/$APK" 'classes*.dex'
+          strings classes*.dex | grep -q 'AUDIFY_V681265_SAFE_ALBUM_SQUARE'
+
+      - name: Upload verified candidate only
+        uses: actions/upload-artifact@v4
+        with:
+          name: Audify-V68.12.65-SAFE-ALBUM-SQUARE
+          path: |
+            audify-android/releases/Audify-V68.12.65-SAFE-ALBUM-SQUARE.apk
+            audify-android/releases/V68.12.65-SAFE-VERIFY.json
+          if-no-files-found: error
+          retention-days: 3
