@@ -1,4 +1,4 @@
-name: Build Audify Android V68.13.2 Gradient-A Splash Locked
+name: Build Audify Android V68.13.3 Album Playlist Save Fix
 
 on:
   workflow_dispatch:
@@ -13,6 +13,7 @@ on:
 permissions:
   contents: write
 
+# Keep the same concurrency family as V68.13.2 so an obsolete build cannot finish after this one.
 concurrency:
   group: audify-android-v68132-${{ github.ref }}
   cancel-in-progress: true
@@ -58,23 +59,24 @@ jobs:
         working-directory: audify-android
         run: node scripts/v68132-safe-patch-chain.mjs
 
-      - name: Build V68.13.2 APK
+      - name: Build V68.13.3 APK
         working-directory: audify-android/android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Prepare V68.13.2 APK and permanent splash verification
+      - name: Prepare V68.13.3 APK and permanent verification
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.13.2-GRADIENT-A-SPLASH-LOCKED.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.13.3-ALBUM-PLAYLIST-SAVE-FIX.apk
           python - <<'PY'
           import json, os, re, zipfile
-          p='audify-android/releases/Audify-V68.13.2-GRADIENT-A-SPLASH-LOCKED.apk'
+          p='audify-android/releases/Audify-V68.13.3-ALBUM-PLAYLIST-SAVE-FIX.apk'
           with zipfile.ZipFile(p) as z:
               dex=[n for n in z.namelist() if re.fullmatch(r'classes\d*\.dex',n)]
               all_dex=b''.join(z.read(n) for n in dex)
           required={
+              'album_playlist_save_fix':b'AUDIFY_V68133_ALBUM_PLAYLIST_SAVE_FIX',
               'real_gradient_a_marker':b'AUDIFY_V6812652_EXACT_GRADIENT_A_SPLASH',
               'gradient_view':b'AudifyGradientMarkView',
               'clickable_album_tracks':b'audify-track-pending',
@@ -86,7 +88,7 @@ jobs:
               'pulse_ring':b'startRingPulse',
               'pulse_logo_shell':b'logoShell',
           }
-          report={'version':'V68.13.2','bytes':os.path.getsize(p),'dex':dex}
+          report={'version':'V68.13.3','bytes':os.path.getsize(p),'dex':dex}
           for k,v in required.items(): report[k]=v in all_dex
           for k,v in forbidden.items(): report[k]=v in all_dex
           missing=[k for k in required if not report[k]]
@@ -94,29 +96,29 @@ jobs:
           if missing: raise SystemExit('Required Audify markers missing: '+', '.join(missing))
           if bad: raise SystemExit('FORBIDDEN old Pulse Splash detected: '+', '.join(bad))
           print(json.dumps(report,indent=2,ensure_ascii=False))
-          open('audify-android/releases/V68.13.2-GRADIENT-A-SPLASH-LOCKED-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
+          open('audify-android/releases/V68.13.3-ALBUM-PLAYLIST-SAVE-FIX-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
           PY
 
-      - name: Upload V68.13.2 APK artifact
+      - name: Upload V68.13.3 APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.13.2-GRADIENT-A-SPLASH-LOCKED-APK
+          name: Audify-V68.13.3-ALBUM-PLAYLIST-SAVE-FIX-APK
           path: |
-            audify-android/releases/Audify-V68.13.2-GRADIENT-A-SPLASH-LOCKED.apk
-            audify-android/releases/V68.13.2-GRADIENT-A-SPLASH-LOCKED-REPORT.json
+            audify-android/releases/Audify-V68.13.3-ALBUM-PLAYLIST-SAVE-FIX.apk
+            audify-android/releases/V68.13.3-ALBUM-PLAYLIST-SAVE-FIX-REPORT.json
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish V68.13.2 APK in repository
+      - name: Publish V68.13.3 APK in repository
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.13.2-GRADIENT-A-SPLASH-LOCKED.apk
-          git add -f audify-android/releases/V68.13.2-GRADIENT-A-SPLASH-LOCKED-REPORT.json
+          git add -f audify-android/releases/Audify-V68.13.3-ALBUM-PLAYLIST-SAVE-FIX.apk
+          git add -f audify-android/releases/V68.13.3-ALBUM-PLAYLIST-SAVE-FIX-REPORT.json
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.13.2 Gradient-A Splash Locked APK'
+          git commit -m 'Publish Audify V68.13.3 Album Playlist Save Fix APK'
           git pull --rebase origin main
           git push origin HEAD:main
