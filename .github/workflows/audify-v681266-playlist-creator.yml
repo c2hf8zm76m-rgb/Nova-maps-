@@ -1,0 +1,143 @@
+name: Build Audify V68.12.66 Playlist Creator
+
+on:
+  push:
+    branches:
+      - audify/v68.12.66-playlist-creator-redesign
+    paths:
+      - 'audify/**'
+      - 'audify-android/**'
+      - '.github/workflows/audify-v681266-playlist-creator.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audify-v681266-playlist-creator-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout playlist redesign branch
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android API and build tools
+        run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+
+      - name: Install dependencies
+        working-directory: audify-android
+        run: npm install
+
+      - name: Prepare web UI
+        working-directory: audify-android
+        run: npm run prepare:web
+
+      - name: Generate and sync Android project
+        working-directory: audify-android
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Apply stable Audify native patch chain
+        working-directory: audify-android
+        run: npm run android:patch
+
+      - name: Restore exact Audify gradient-A animation
+        working-directory: audify-android
+        run: node scripts/v6812651-restore-intro-morph.mjs
+
+      - name: Preserve V68.12.65 safe album square
+        working-directory: audify-android
+        run: node scripts/v681265-safe-album-square.mjs
+
+      - name: Restore full stable dependency footprint
+        working-directory: audify-android
+        run: node scripts/v6812581-full-package-restore.mjs
+
+      - name: Apply V68.12.66 playlist creator redesign
+        working-directory: audify-android
+        run: node scripts/v681266-playlist-creator-redesign.mjs
+
+      - name: Source verification
+        working-directory: audify-android
+        run: |
+          set -euxo pipefail
+          P=android/app/src/main/java/com/nova/audify
+          grep -q 'AUDIFY_V681266_PLAYLIST_CREATOR' "$P/AudifyCreatePlaylistDialog.java"
+          grep -q 'AudifyCreatePlaylistDialog.show(this,store,null,null,this::rebuildLibrary)' "$P/NativeHomeActivity.java"
+          grep -q 'AudifyCreatePlaylistDialog.show(a,store,track,parent,changed)' "$P/AudifyPlaylistPicker.java"
+          ! grep -A12 -B2 'private void promptCreatePlaylist' "$P/NativeHomeActivity.java" | grep -q 'AlertDialog.Builder'
+
+      - name: Compile APK
+        working-directory: audify-android/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Collect and verify APK
+        run: |
+          set -euxo pipefail
+          SRC=audify-android/android/app/build/outputs/apk/debug/app-debug.apk
+          OUT=audify-android/releases/Audify-V68.12.66-PLAYLIST-CREATOR.apk
+          mkdir -p audify-android/releases
+          cp "$SRC" "$OUT"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$OUT" | grep -q "package: name='com.nova.audify'"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$OUT" > audify-android/releases/V68.12.66-CERTS.txt
+          python - <<'PY'
+          import json, os, zipfile
+          p='audify-android/releases/Audify-V68.12.66-PLAYLIST-CREATOR.apk'
+          z=zipfile.ZipFile(p)
+          bad=z.testzip()
+          names=z.namelist()
+          dex=[n for n in names if n.startswith('classes') and n.endswith('.dex')]
+          report={
+            'bytes':os.path.getsize(p),
+            'mib':round(os.path.getsize(p)/(1024*1024),3),
+            'entries':len(names),
+            'dex_count':len(dex),
+            'zip_test':'ok' if bad is None else bad,
+          }
+          if bad is not None or len(dex)<8 or len(names)<850:
+            raise SystemExit('APK structure verification failed: '+json.dumps(report))
+          open('audify-android/releases/V68.12.66-VERIFY.json','w').write(json.dumps(report,indent=2))
+          print(json.dumps(report,indent=2))
+          PY
+
+      - name: Verify compiled playlist marker in DEX
+        run: |
+          set -euxo pipefail
+          rm -rf /tmp/audify-v681266 && mkdir -p /tmp/audify-v681266
+          cd /tmp/audify-v681266
+          unzip -q "$GITHUB_WORKSPACE/audify-android/releases/Audify-V68.12.66-PLAYLIST-CREATOR.apk" 'classes*.dex'
+          strings classes*.dex > strings.txt
+          grep -q 'AUDIFY_V681266_PLAYLIST_CREATOR' strings.txt
+          grep -q 'Crée ta playlist' strings.txt
+          grep -q 'Une playlist porte déjà ce nom' strings.txt
+
+      - name: Upload verified APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Audify-V68.12.66-PLAYLIST-CREATOR
+          path: |
+            audify-android/releases/Audify-V68.12.66-PLAYLIST-CREATOR.apk
+            audify-android/releases/V68.12.66-VERIFY.json
+            audify-android/releases/V68.12.66-CERTS.txt
+          if-no-files-found: error
+          retention-days: 3
