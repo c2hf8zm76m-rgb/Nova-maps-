@@ -1,0 +1,90 @@
+name: Audify V54 Baseline Probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/audify-v54-baseline-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pre-V68.12.56 source baseline
+        uses: actions/checkout@v4
+        with:
+          ref: 16d204b60b09a894b90815dfb6d0a818159c90b0
+          fetch-depth: 1
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android API 36
+        run: sdkmanager "platforms;android-36"
+      - name: Install dependencies
+        working-directory: audify-android
+        run: npm install
+      - name: Prepare web bundle
+        working-directory: audify-android
+        run: npm run prepare:web
+      - name: Generate Android project
+        working-directory: audify-android
+        run: npx cap add android
+      - name: Sync Android project
+        working-directory: audify-android
+        run: npx cap sync android
+      - name: Apply native patches from pre-V56 baseline
+        working-directory: audify-android
+        run: npm run android:patch
+      - name: Build baseline APK
+        working-directory: audify-android/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+      - name: Inspect package footprint
+        run: |
+          python - <<'PY'
+          import os,re,zipfile,json
+          p='audify-android/android/app/build/outputs/apk/debug/app-debug.apk'
+          z=zipfile.ZipFile(p)
+          names=z.namelist()
+          dex=[n for n in names if re.fullmatch(r'classes\d*\.dex',n)]
+          libs=[n for n in names if n.startswith('lib/') and n.endswith('.so')]
+          res=[n for n in names if n.startswith('res/')]
+          assets=[n for n in names if n.startswith('assets/')]
+          audify=set()
+          pat=re.compile(rb'Lcom/nova/audify/[A-Za-z0-9_$]+;')
+          for n in dex:
+              audify.update(x.decode('ascii','ignore') for x in pat.findall(z.read(n)))
+          report={
+            'apk_bytes':os.path.getsize(p),
+            'zip_entries':len(names),
+            'dex_count':len(dex),
+            'dex':dex,
+            'native_lib_count':len(libs),
+            'native_libs':libs,
+            'res_count':len(res),
+            'assets_count':len(assets),
+            'audify_class_descriptors':len(audify)
+          }
+          print(json.dumps(report,indent=2))
+          open('/tmp/audify-v54-baseline-report.json','w').write(json.dumps(report,indent=2))
+          PY
+      - name: Upload baseline probe
+        uses: actions/upload-artifact@v4
+        with:
+          name: Audify-V54-BASELINE-PROBE
+          path: |
+            audify-android/android/app/build/outputs/apk/debug/app-debug.apk
+            /tmp/audify-v54-baseline-report.json
+          retention-days: 3
