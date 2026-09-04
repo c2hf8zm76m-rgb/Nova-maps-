@@ -1,4 +1,4 @@
-name: Diagnose Audify Android V68.12.58.1 package
+name: Build Audify Android V68.12.64 Album Trigger Restored
 
 on:
   workflow_dispatch:
@@ -11,10 +11,10 @@ on:
       - '.github/workflows/audify-android-build.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: audify-android-diagnostic-${{ github.ref }}
+  group: audify-android-v681264-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -23,68 +23,93 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+
       - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-      - name: Install Android API 36
-        run: sdkmanager "platforms;android-36"
+
       - name: Install Audify Android dependencies
         working-directory: audify-android
         run: npm install
+
       - name: Prepare Audify web UI
         working-directory: audify-android
         run: npm run prepare:web
+
       - name: Generate Capacitor Android project
         working-directory: audify-android
         run: npx cap add android
+
       - name: Sync Capacitor Android
         working-directory: audify-android
         run: npx cap sync android
-      - name: Apply Audify native engine and V68.12.58 Multi-Source Album Intelligence
+
+      - name: Apply Audify native engine and V68.12.64 restored album trigger
         working-directory: audify-android
         run: npm run android:patch
-      - name: Restore V68.12.54 Android dependency footprint
-        working-directory: audify-android
-        run: node scripts/v6812581-full-package-restore.mjs
-      - name: Build diagnostic APK
+
+      - name: Build V68.12.64 APK
         working-directory: audify-android/android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
-      - name: Prepare diagnostic APK and report
+
+      - name: Prepare V68.12.64 APK and verification report
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.58.1-DIAGNOSTIC.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.12.64-ALBUM-TRIGGER-RESTORED.apk
           python - <<'PY'
-          import os,zipfile,json
-          p='audify-android/releases/Audify-V68.12.58.1-DIAGNOSTIC.apk'
-          z=zipfile.ZipFile(p)
-          names=z.namelist()
-          report={
-            'bytes':os.path.getsize(p),
-            'dex':[n for n in names if n.startswith('classes') and n.endswith('.dex')],
-            'native_libs':[n for n in names if n.startswith('lib/')],
-            'res_count':sum(n.startswith('res/') for n in names),
-            'entries':len(names),
-            'assets_public_count':sum(n.startswith('assets/public/') for n in names),
-          }
+          import json, os, re, zipfile
+          p='audify-android/releases/Audify-V68.12.64-ALBUM-TRIGGER-RESTORED.apk'
+          with zipfile.ZipFile(p) as z:
+              names=z.namelist()
+              dex=[n for n in names if re.fullmatch(r'classes\d*\.dex',n)]
+              marker=b'AUDIFY_V681264_RESTORE_ALBUM_TRIGGER'
+              open_album='Ouvrir cet album'.encode('utf-8')
+              blobs=[z.read(n) for n in dex]
+              report={
+                  'version':'V68.12.64',
+                  'bytes':os.path.getsize(p),
+                  'dex':dex,
+                  'album_trigger_marker_compiled':any(marker in b for b in blobs),
+                  'open_album_action_compiled':any(open_album in b for b in blobs),
+              }
+          if not report['album_trigger_marker_compiled']:
+              raise SystemExit('V68.12.64 album trigger marker missing from compiled APK')
           print(json.dumps(report,indent=2))
-          open('audify-android/releases/V68.12.58.1-DIAGNOSTIC-REPORT.json','w').write(json.dumps(report,indent=2))
+          open('audify-android/releases/V68.12.64-ALBUM-TRIGGER-REPORT.json','w').write(json.dumps(report,indent=2))
           PY
-      - name: Upload diagnostic APK artifact
+
+      - name: Upload V68.12.64 APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.12.58.1-DIAGNOSTIC
+          name: Audify-V68.12.64-ALBUM-TRIGGER-RESTORED-APK
           path: |
-            audify-android/releases/Audify-V68.12.58.1-DIAGNOSTIC.apk
-            audify-android/releases/V68.12.58.1-DIAGNOSTIC-REPORT.json
+            audify-android/releases/Audify-V68.12.64-ALBUM-TRIGGER-RESTORED.apk
+            audify-android/releases/V68.12.64-ALBUM-TRIGGER-REPORT.json
           if-no-files-found: error
-          retention-days: 2
+          retention-days: 30
+
+      - name: Publish V68.12.64 APK in repository
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f audify-android/releases/Audify-V68.12.64-ALBUM-TRIGGER-RESTORED.apk
+          git add -f audify-android/releases/V68.12.64-ALBUM-TRIGGER-REPORT.json
+          if git diff --cached --quiet; then
+            echo 'APK unchanged'
+            exit 0
+          fi
+          git commit -m 'Publish Audify V68.12.64 Album Trigger Restored APK'
+          git pull --rebase origin main
+          git push origin HEAD:main
