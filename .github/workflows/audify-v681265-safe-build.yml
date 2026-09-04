@@ -89,46 +89,78 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Verify APK structure, package and minimum size
+      - name: Collect candidate diagnostics before any fatal gate
         run: |
           set -euxo pipefail
           SRC=audify-android/android/app/build/outputs/apk/debug/app-debug.apk
           OUT=audify-android/releases/Audify-V68.12.65-SAFE-ALBUM-SQUARE.apk
+          REPORT=audify-android/releases/V68.12.65-SAFE-DIAGNOSTICS.json
+          BADGING=audify-android/releases/V68.12.65-SAFE-BADGING.txt
+          CERTS=audify-android/releases/V68.12.65-SAFE-CERTS.txt
           mkdir -p audify-android/releases
           cp "$SRC" "$OUT"
-
-          # User-approved stable V68.12.63 reference: 19,647,687 bytes.
-          BASE_BYTES=19647687
-          NEW_BYTES=$(stat -c%s "$OUT")
-          echo "Stable V68.12.63 bytes: $BASE_BYTES"
-          echo "Candidate V68.12.65 bytes: $NEW_BYTES"
-          test "$NEW_BYTES" -ge "$BASE_BYTES"
-
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$OUT" | grep -q "package: name='com.nova.audify'"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$OUT"
-
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$OUT" > "$BADGING"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$OUT" > "$CERTS" 2>&1 || true
           python - <<'PY'
-          import json, os, zipfile, sys
+          import json, os, zipfile
           p='audify-android/releases/Audify-V68.12.65-SAFE-ALBUM-SQUARE.apk'
           z=zipfile.ZipFile(p)
           names=z.namelist()
           dex=[n for n in names if n.startswith('classes') and n.endswith('.dex')]
           report={
             'reference_v681263_bytes':19647687,
+            'reference_v681263_mib':round(19647687/(1024*1024),3),
+            'reference_v681263_entries':945,
+            'reference_v681263_dex_count':9,
+            'reference_v681263_cert_sha256':'A873A40E9EFAEA6B7007552FD41D593D7E6DC94496B6E78655EEB697D7B50D6C',
             'candidate_bytes':os.path.getsize(p),
             'candidate_mib':round(os.path.getsize(p)/(1024*1024),3),
+            'size_delta_bytes':os.path.getsize(p)-19647687,
+            'size_gate_passed':os.path.getsize(p)>=19647687,
             'dex_count':len(dex),
             'dex':dex,
+            'dex_gate_passed':len(dex)>=9,
             'entries':len(names),
             'native_lib_count':sum(n.startswith('lib/') for n in names),
             'assets_public_count':sum(n.startswith('assets/public/') for n in names),
-            'size_gate_passed':os.path.getsize(p)>=19647687,
+            'zip_test':'ok' if z.testzip() is None else z.testzip(),
           }
           print(json.dumps(report,indent=2))
+          open('audify-android/releases/V68.12.65-SAFE-DIAGNOSTICS.json','w').write(json.dumps(report,indent=2))
+          PY
+
+      - name: Upload diagnostics even if later safety gates fail
+        uses: actions/upload-artifact@v4
+        with:
+          name: Audify-V68.12.65-DIAGNOSTICS
+          path: |
+            audify-android/releases/V68.12.65-SAFE-DIAGNOSTICS.json
+            audify-android/releases/V68.12.65-SAFE-BADGING.txt
+            audify-android/releases/V68.12.65-SAFE-CERTS.txt
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Enforce size, package, ZIP and DEX safety gates
+        run: |
+          set -euxo pipefail
+          OUT=audify-android/releases/Audify-V68.12.65-SAFE-ALBUM-SQUARE.apk
+          BASE_BYTES=19647687
+          NEW_BYTES=$(stat -c%s "$OUT")
+          echo "Stable V68.12.63 bytes: $BASE_BYTES"
+          echo "Candidate V68.12.65 bytes: $NEW_BYTES"
+          test "$NEW_BYTES" -ge "$BASE_BYTES"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$OUT" | grep -q "package: name='com.nova.audify'"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$OUT"
+          python - <<'PY'
+          import zipfile, sys
+          p='audify-android/releases/Audify-V68.12.65-SAFE-ALBUM-SQUARE.apk'
+          z=zipfile.ZipFile(p)
+          if z.testzip() is not None:
+            raise SystemExit('ZIP integrity failed')
+          dex=[n for n in z.namelist() if n.startswith('classes') and n.endswith('.dex')]
           if len(dex) < 9:
             print('ERROR: stable V68.12.63 had 9 dex files; candidate has fewer', file=sys.stderr)
             sys.exit(1)
-          open('audify-android/releases/V68.12.65-SAFE-VERIFY.json','w').write(json.dumps(report,indent=2))
           PY
 
       - name: Verify compiled feature marker inside DEX
@@ -140,6 +172,9 @@ jobs:
           unzip -q "$GITHUB_WORKSPACE/$APK" 'classes*.dex'
           strings classes*.dex | grep -q 'AUDIFY_V681265_SAFE_ALBUM_SQUARE'
 
+      - name: Promote diagnostics to final verification report
+        run: cp audify-android/releases/V68.12.65-SAFE-DIAGNOSTICS.json audify-android/releases/V68.12.65-SAFE-VERIFY.json
+
       - name: Upload verified candidate only
         uses: actions/upload-artifact@v4
         with:
@@ -147,5 +182,6 @@ jobs:
           path: |
             audify-android/releases/Audify-V68.12.65-SAFE-ALBUM-SQUARE.apk
             audify-android/releases/V68.12.65-SAFE-VERIFY.json
+            audify-android/releases/V68.12.65-SAFE-CERTS.txt
           if-no-files-found: error
           retention-days: 3
