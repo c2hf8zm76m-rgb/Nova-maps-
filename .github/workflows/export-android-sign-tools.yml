@@ -20,10 +20,11 @@ jobs:
       - name: Package signer
         run: |
           set -eux
-          mkdir -p /tmp/android-sign-tools/lib
+          mkdir -p /tmp/android-sign-tools/lib /tmp/android-sign-tools/lib64
           cp "$ANDROID_HOME/build-tools/35.0.0/apksigner" /tmp/android-sign-tools/
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" /tmp/android-sign-tools/lib/
           cp "$ANDROID_HOME/build-tools/35.0.0/zipalign" /tmp/android-sign-tools/
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib64/libc++.so" /tmp/android-sign-tools/lib64/
           chmod +x /tmp/android-sign-tools/apksigner /tmp/android-sign-tools/zipalign
       - uses: actions/upload-artifact@v4
         with:
@@ -31,4 +32,4 @@ jobs:
           path: /tmp/android-sign-tools
           retention-days: 1
 
-# 2026-09-04: export signer tools for Audify V68.12.56 exact-base package
+# 2026-09-04: export signer + zipalign runtime for Audify V68.12.56 exact-base package
