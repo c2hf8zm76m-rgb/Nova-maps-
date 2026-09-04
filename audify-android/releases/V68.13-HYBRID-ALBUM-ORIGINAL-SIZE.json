@@ -1,0 +1,14 @@
+{
+  "app": "Audify Android",
+  "version": "V68.13",
+  "channel": "stable",
+  "name": "HYBRID ALBUM ORIGINAL SIZE",
+  "apk": "Audify-V68.13-HYBRID-ALBUM-ORIGINAL-SIZE.apk",
+  "package": "com.nova.audify",
+  "bytes": 18857668,
+  "sha256": "dec1a1b6952f602345081974117335f9b8b93f036d1dda41e01b19d9105c5162",
+  "promoted_at": "2026-09-05",
+  "previous_stable": "V68.12.63",
+  "status": "official-current-update",
+  "binary_source": "user-provided APK"
+}
