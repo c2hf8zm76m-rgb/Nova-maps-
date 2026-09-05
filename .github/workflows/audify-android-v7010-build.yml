@@ -1,0 +1,202 @@
+name: Build Audify Android V70.1 Widget Polish
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'audify/**'
+      - 'audify-android/**'
+      - '!audify-android/releases/**'
+      - '.github/workflows/audify-android-v7010-build.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audify-android-v7010-widget-polish-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Audify Android dependencies
+        working-directory: audify-android
+        run: npm install
+
+      - name: Prepare Audify web UI
+        working-directory: audify-android
+        run: npm run prepare:web
+
+      - name: Generate Capacitor Android project
+        working-directory: audify-android
+        run: npx cap add android
+
+      - name: Sync Capacitor Android
+        working-directory: audify-android
+        run: npx cap sync android
+
+      - name: Enforce frozen album detection engine
+        working-directory: audify-android
+        run: |
+          ACTUAL="$(git hash-object scripts/v68171-album-engine-freeze-lock.mjs)"
+          EXPECTED="66189e7379c216f3eef8af35b4f95724e770b209"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "AUDIFY ALBUM ENGINE FREEZE LOCK CHANGED"
+            echo "expected=$EXPECTED"
+            echo "actual=$ACTUAL"
+            exit 1
+          fi
+          node scripts/v68171-album-engine-freeze-lock.mjs
+
+      - name: Build validated V69 widget base
+        working-directory: audify-android
+        run: node scripts/v68132-safe-patch-chain.mjs
+
+      - name: Apply V70.0 Queue and Lyrics Live widgets
+        working-directory: audify-android
+        run: node scripts/v7000-queue-lyrics-live-widgets.mjs
+
+      - name: Apply V70.1 Widget Polish
+        working-directory: audify-android
+        run: node scripts/v7010-widget-polish.mjs
+
+      - name: Verify generated V70.1 widget polish
+        working-directory: audify-android
+        run: |
+          grep -q 'versionCode 7010' android/app/build.gradle
+          grep -q 'versionName "70.1"' android/app/build.gradle
+          ! grep -q 'audify_lyrics_mic' android/app/src/main/res/layout/audify_widget_lyrics.xml
+          ! grep -q 'R.id.audify_lyrics_mic' android/app/src/main/java/com/nova/audify/AudifyLyricsWidget.java
+          test -f android/app/src/main/res/layout/audify_widget_preview_player.xml
+          test -f android/app/src/main/res/layout/audify_widget_preview_mini.xml
+          test -f android/app/src/main/res/layout/audify_widget_preview_favorites.xml
+          test -f android/app/src/main/res/layout/audify_widget_preview_resume.xml
+          test -f android/app/src/main/res/layout/audify_widget_preview_queue.xml
+          test -f android/app/src/main/res/layout/audify_widget_preview_lyrics.xml
+          test -f android/app/src/main/res/drawable/audify_widget_preview_fallback.xml
+          test -f android/app/src/main/res/values/audify_widget_descriptions.xml
+          grep -q 'previewLayout="@layout/audify_widget_preview_player"' android/app/src/main/res/xml/audify_widget_info.xml
+          grep -q 'previewLayout="@layout/audify_widget_preview_mini"' android/app/src/main/res/xml/audify_widget_mini_info.xml
+          grep -q 'previewLayout="@layout/audify_widget_preview_favorites"' android/app/src/main/res/xml/audify_favorites_widget_info.xml
+          grep -q 'previewLayout="@layout/audify_widget_preview_resume"' android/app/src/main/res/xml/audify_resume_widget_info.xml
+          grep -q 'previewLayout="@layout/audify_widget_preview_queue"' android/app/src/main/res/xml/audify_queue_widget_info.xml
+          grep -q 'previewLayout="@layout/audify_widget_preview_lyrics"' android/app/src/main/res/xml/audify_lyrics_live_widget_info.xml
+          for f in android/app/src/main/res/xml/audify_widget_info.xml android/app/src/main/res/xml/audify_widget_mini_info.xml android/app/src/main/res/xml/audify_favorites_widget_info.xml android/app/src/main/res/xml/audify_resume_widget_info.xml android/app/src/main/res/xml/audify_queue_widget_info.xml android/app/src/main/res/xml/audify_lyrics_live_widget_info.xml; do
+            grep -q 'previewImage="@drawable/audify_widget_preview_fallback"' "$f"
+            grep -q 'android:description=' "$f"
+            grep -q 'android:targetCellWidth=' "$f"
+            grep -q 'android:targetCellHeight=' "$f"
+          done
+
+      - name: Build V70.1 APK
+        working-directory: audify-android/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Prepare V70.1 APK and verification report
+        run: |
+          mkdir -p audify-android/releases
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V70.1-WIDGET-POLISH.apk
+          python - <<'PY'
+          import json, os, re, zipfile
+          p='audify-android/releases/Audify-V70.1-WIDGET-POLISH.apk'
+          with zipfile.ZipFile(p) as z:
+              dex=[n for n in z.namelist() if re.fullmatch(r'classes\d*\.dex',n)]
+              all_dex=b''.join(z.read(n) for n in dex)
+              names=set(z.namelist())
+          required={
+              'widget_polish':b'AUDIFY_V7010_WIDGET_POLISH',
+              'no_lyrics_mic_marker':b'AUDIFY_V7010_NO_LYRICS_MIC',
+              'rich_previews_marker':b'AUDIFY_V7010_RICH_WIDGET_PREVIEWS',
+              'v70_widget_pack':b'AUDIFY_V7000_QUEUE_LYRICS_WIDGET_PACK',
+              'queue_widget':b'AUDIFY_V7000_QUEUE_WIDGET',
+              'lyrics_live':b'AUDIFY_V7000_LYRICS_LIVE_WIDGET',
+              'favorites_widget':b'AUDIFY_V6900_FAVORITES_WIDGET',
+              'resume_widget':b'AUDIFY_V6900_RESUME_RECENT_WIDGET',
+              'player_widget':b'AUDIFY_V68180_ANDROID_HOME_WIDGET',
+              'mini_widget':b'AUDIFY_V68190_MINI_WIDGET',
+          }
+          providers={
+              'player_provider':b'AudifyPlayerWidget' in all_dex,
+              'mini_provider':b'AudifyMiniWidget' in all_dex,
+              'favorites_provider':b'AudifyFavoritesWidget' in all_dex,
+              'resume_provider':b'AudifyResumeWidget' in all_dex,
+              'queue_provider':b'AudifyQueueWidget' in all_dex,
+              'lyrics_provider':b'AudifyLyricsWidget' in all_dex,
+          }
+          preview_tokens=(
+              'audify_widget_preview_player','audify_widget_preview_mini',
+              'audify_widget_preview_favorites','audify_widget_preview_resume',
+              'audify_widget_preview_queue','audify_widget_preview_lyrics',
+              'audify_widget_preview_fallback','audify_widget_descriptions'
+          )
+          report={
+              'version':'V70.1',
+              'version_name':'70.1',
+              'version_code':7010,
+              'widget_count':6,
+              'lyrics_widget_microphone_button':False,
+              'lyrics_lines_still_open_karaoke':True,
+              'rich_widget_picker_previews':True,
+              'preview_layout_android12_plus':True,
+              'preview_image_fallback':True,
+              'launcher_rendering_note':'Final picker rendering remains launcher-dependent.',
+              'visible_widgets':['Player','Mini Control','Favorites','Resume/Recent','A suivre','Lyrics Live'],
+              'bytes':os.path.getsize(p),
+              'dex':dex,
+              **providers,
+          }
+          for k,v in required.items(): report[k]=v in all_dex
+          report['preview_resources_present']=all(any(token in n for n in names) for token in preview_tokens)
+          missing=[k for k in required if not report[k]]
+          missing += [k for k,v in providers.items() if not v]
+          if not report['preview_resources_present']: missing.append('preview_resources_present')
+          if missing: raise SystemExit('Required Audify V70.1 markers missing: '+', '.join(missing))
+          print(json.dumps(report,indent=2,ensure_ascii=False))
+          open('audify-android/releases/V70.1-WIDGET-POLISH-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
+          PY
+
+      - name: Upload V70.1 APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Audify-V70.1-WIDGET-POLISH-APK
+          path: |
+            audify-android/releases/Audify-V70.1-WIDGET-POLISH.apk
+            audify-android/releases/V70.1-WIDGET-POLISH-REPORT.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish V70.1 APK in repository
+        continue-on-error: true
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f audify-android/releases/Audify-V70.1-WIDGET-POLISH.apk
+          git add -f audify-android/releases/V70.1-WIDGET-POLISH-REPORT.json
+          if git diff --cached --quiet; then
+            echo 'APK unchanged'
+            exit 0
+          fi
+          git commit -m 'Publish Audify V70.1 Widget Polish APK'
+          git pull --rebase origin main
+          git push origin HEAD:main
