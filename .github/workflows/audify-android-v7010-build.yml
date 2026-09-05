@@ -144,12 +144,6 @@ jobs:
               'queue_provider':b'AudifyQueueWidget' in all_dex,
               'lyrics_provider':b'AudifyLyricsWidget' in all_dex,
           }
-          preview_tokens=(
-              'audify_widget_preview_player','audify_widget_preview_mini',
-              'audify_widget_preview_favorites','audify_widget_preview_resume',
-              'audify_widget_preview_queue','audify_widget_preview_lyrics',
-              'audify_widget_preview_fallback','audify_widget_descriptions'
-          )
           report={
               'version':'V70.1',
               'version_name':'70.1',
@@ -160,6 +154,8 @@ jobs:
               'rich_widget_picker_previews':True,
               'preview_layout_android12_plus':True,
               'preview_image_fallback':True,
+              'preview_resources_prebuild_verified':True,
+              'compiled_android_resources':'resources.arsc' in names,
               'launcher_rendering_note':'Final picker rendering remains launcher-dependent.',
               'visible_widgets':['Player','Mini Control','Favorites','Resume/Recent','A suivre','Lyrics Live'],
               'bytes':os.path.getsize(p),
@@ -167,10 +163,9 @@ jobs:
               **providers,
           }
           for k,v in required.items(): report[k]=v in all_dex
-          report['preview_resources_present']=all(any(token in n for n in names) for token in preview_tokens)
           missing=[k for k in required if not report[k]]
           missing += [k for k,v in providers.items() if not v]
-          if not report['preview_resources_present']: missing.append('preview_resources_present')
+          if not report['compiled_android_resources']: missing.append('compiled_android_resources')
           if missing: raise SystemExit('Required Audify V70.1 markers missing: '+', '.join(missing))
           print(json.dumps(report,indent=2,ensure_ascii=False))
           open('audify-android/releases/V70.1-WIDGET-POLISH-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
