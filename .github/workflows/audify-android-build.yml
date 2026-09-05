@@ -1,4 +1,4 @@
-name: Build Audify Android V68.17 Voir Album Button UI
+name: Build Audify Android V68.17 Frozen Album Engine
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: audify-android-v68170-${{ github.ref }}
+  group: audify-android-v6817-frozen-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -53,6 +53,19 @@ jobs:
       - name: Sync Capacitor Android
         working-directory: audify-android
         run: npx cap sync android
+
+      - name: Enforce frozen album detection engine
+        working-directory: audify-android
+        run: |
+          ACTUAL="$(git hash-object scripts/v68171-album-engine-freeze-lock.mjs)"
+          EXPECTED="66189e7379c216f3eef8af35b4f95724e770b209"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "AUDIFY ALBUM ENGINE FREEZE LOCK CHANGED"
+            echo "expected=$EXPECTED"
+            echo "actual=$ACTUAL"
+            exit 1
+          fi
+          node scripts/v68171-album-engine-freeze-lock.mjs
 
       - name: Apply safe patch chain without legacy Pulse Splash
         working-directory: audify-android
@@ -145,7 +158,7 @@ jobs:
               'pulse_ring':b'startRingPulse',
               'pulse_logo_shell':b'logoShell',
           }
-          report={'version':'V68.17','bytes':os.path.getsize(p),'dex':dex}
+          report={'version':'V68.17','album_engine_frozen':True,'freeze_lock_blob':'66189e7379c216f3eef8af35b4f95724e770b209','bytes':os.path.getsize(p),'dex':dex}
           for k,v in required.items(): report[k]=v in all_dex
           for k,v in forbidden.items(): report[k]=v in all_dex
           missing=[k for k in required if not report[k]]
@@ -159,7 +172,7 @@ jobs:
       - name: Upload V68.17 APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.17-VOIR-ALBUM-BUTTON-UI-APK
+          name: Audify-V68.17-FROZEN-ALBUM-ENGINE-APK
           path: |
             audify-android/releases/Audify-V68.17-VOIR-ALBUM-BUTTON-UI.apk
             audify-android/releases/V68.17-VOIR-ALBUM-BUTTON-UI-REPORT.json
@@ -177,6 +190,6 @@ jobs:
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.17 Voir Album Button UI APK'
+          git commit -m 'Publish Audify V68.17 Frozen Album Engine APK'
           git pull --rebase origin main
           git push origin HEAD:main
