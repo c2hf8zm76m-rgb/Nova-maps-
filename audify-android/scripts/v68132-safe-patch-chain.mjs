@@ -48,6 +48,7 @@ for(const script of [
   'scripts/v681641-visible-album-diagnostic-ui.mjs',
   'scripts/v68165-hint-first-release-lookup.mjs',
   'scripts/v68166-fast-proof-pipeline.mjs',
+  'scripts/v68170-voir-album-button-ui.mjs',
   'scripts/v68132-restore-exact-gradient-a-splash.mjs',
   'scripts/v681322-android12-splash-theme-fix.mjs',
   'scripts/v681321-splash-safety-lock.mjs'
@@ -55,4 +56,4 @@ for(const script of [
   execSync(`node ${script}`,{cwd:root,stdio:'inherit',shell:true});
 }
 
-console.log('Audify V68.16.6 safe patch chain complete: fast parallel proof pipeline + hint-first canonical album lookup + runtime diagnostics + Innertube evidence + all album guards + Gradient-A splash lock.');
+console.log('Audify V68.17 safe patch chain complete: compact Voir album button UI + no album-preview tile + fast parallel proof pipeline + hint-first canonical album lookup + all album guards + playback continuity + Gradient-A splash lock.');
