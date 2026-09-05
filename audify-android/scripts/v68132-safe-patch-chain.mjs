@@ -42,6 +42,7 @@ for(const script of [
   'scripts/v68160-release-preference-intelligence.mjs',
   'scripts/v68161-apple-release-graph.mjs',
   'scripts/v68162-official-album-mention-intelligence.mjs',
+  'scripts/v68163-innertube-video-evidence-bridge.mjs',
   'scripts/v68132-restore-exact-gradient-a-splash.mjs',
   'scripts/v681322-android12-splash-theme-fix.mjs',
   'scripts/v681321-splash-safety-lock.mjs'
@@ -49,4 +50,4 @@ for(const script of [
   execSync(`node ${script}`,{cwd:root,stdio:'inherit',shell:true});
 }
 
-console.log('Audify V68.16.2 safe patch chain complete: Official Album Mention Intelligence + Apple Release Graph + Release Preference Intelligence + Artist Identity Fusion + catalogue cross-checks + playback continuity + Gradient-A splash lock.');
+console.log('Audify V68.16.3 safe patch chain complete: exact videoId -> Innertube videoDetails -> official description -> album hint + all canonical album guards + Gradient-A splash lock.');
