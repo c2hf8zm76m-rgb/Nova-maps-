@@ -1,4 +1,4 @@
-name: Build Audify Android V68.16.3 Innertube Video Evidence Bridge
+name: Build Audify Android V68.16.4 Album Diagnostic Trace
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: audify-android-v68163-${{ github.ref }}
+  group: audify-android-v68164-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -58,23 +58,27 @@ jobs:
         working-directory: audify-android
         run: node scripts/v68132-safe-patch-chain.mjs
 
-      - name: Build V68.16.3 APK
+      - name: Build V68.16.4 APK
         working-directory: audify-android/android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Prepare V68.16.3 APK and permanent verification
+      - name: Prepare V68.16.4 APK and permanent verification
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.16.3-INNERTUBE-VIDEO-EVIDENCE-BRIDGE.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.16.4-ALBUM-DIAGNOSTIC-TRACE.apk
           python - <<'PY'
           import json, os, re, zipfile
-          p='audify-android/releases/Audify-V68.16.3-INNERTUBE-VIDEO-EVIDENCE-BRIDGE.apk'
+          p='audify-android/releases/Audify-V68.16.4-ALBUM-DIAGNOSTIC-TRACE.apk'
           with zipfile.ZipFile(p) as z:
               dex=[n for n in z.namelist() if re.fullmatch(r'classes\d*\.dex',n)]
               all_dex=b''.join(z.read(n) for n in dex)
           required={
+              'album_diagnostic_trace':b'AUDIFY_V68164_ALBUM_DIAGNOSTIC_TRACE',
+              'visible_failure_diagnostic':b'AUDIFY_V68164_VISIBLE_FAILURE_DIAGNOSTIC',
+              'apple_reject_reasons':b'AUDIFY_V68164_APPLE_REJECT_REASONS',
+              'deezer_reject_reasons':b'AUDIFY_V68164_DEEZER_REJECT_REASONS',
               'innertube_video_details':b'AUDIFY_V68163_INNERTUBE_VIDEO_DETAILS',
               'video_description_evidence':b'AUDIFY_V68163_VIDEO_DESCRIPTION_EVIDENCE',
               'innertube_video_evidence_bridge':b'AUDIFY_V68163_INNERTUBE_VIDEO_EVIDENCE_BRIDGE',
@@ -128,7 +132,7 @@ jobs:
               'pulse_ring':b'startRingPulse',
               'pulse_logo_shell':b'logoShell',
           }
-          report={'version':'V68.16.3','bytes':os.path.getsize(p),'dex':dex}
+          report={'version':'V68.16.4','bytes':os.path.getsize(p),'dex':dex}
           for k,v in required.items(): report[k]=v in all_dex
           for k,v in forbidden.items(): report[k]=v in all_dex
           missing=[k for k in required if not report[k]]
@@ -136,29 +140,29 @@ jobs:
           if missing: raise SystemExit('Required Audify markers missing: '+', '.join(missing))
           if bad: raise SystemExit('Forbidden legacy behavior detected: '+', '.join(bad))
           print(json.dumps(report,indent=2,ensure_ascii=False))
-          open('audify-android/releases/V68.16.3-INNERTUBE-VIDEO-EVIDENCE-BRIDGE-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
+          open('audify-android/releases/V68.16.4-ALBUM-DIAGNOSTIC-TRACE-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
           PY
 
-      - name: Upload V68.16.3 APK artifact
+      - name: Upload V68.16.4 APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.16.3-INNERTUBE-VIDEO-EVIDENCE-BRIDGE-APK
+          name: Audify-V68.16.4-ALBUM-DIAGNOSTIC-TRACE-APK
           path: |
-            audify-android/releases/Audify-V68.16.3-INNERTUBE-VIDEO-EVIDENCE-BRIDGE.apk
-            audify-android/releases/V68.16.3-INNERTUBE-VIDEO-EVIDENCE-BRIDGE-REPORT.json
+            audify-android/releases/Audify-V68.16.4-ALBUM-DIAGNOSTIC-TRACE.apk
+            audify-android/releases/V68.16.4-ALBUM-DIAGNOSTIC-TRACE-REPORT.json
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish V68.16.3 APK in repository
+      - name: Publish V68.16.4 APK in repository
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.16.3-INNERTUBE-VIDEO-EVIDENCE-BRIDGE.apk
-          git add -f audify-android/releases/V68.16.3-INNERTUBE-VIDEO-EVIDENCE-BRIDGE-REPORT.json
+          git add -f audify-android/releases/Audify-V68.16.4-ALBUM-DIAGNOSTIC-TRACE.apk
+          git add -f audify-android/releases/V68.16.4-ALBUM-DIAGNOSTIC-TRACE-REPORT.json
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.16.3 Innertube Video Evidence Bridge APK'
+          git commit -m 'Publish Audify V68.16.4 Album Diagnostic Trace APK'
           git pull --rebase origin main
           git push origin HEAD:main
