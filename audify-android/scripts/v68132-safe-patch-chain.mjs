@@ -55,6 +55,7 @@ for(const script of [
   'scripts/v68166-fast-proof-pipeline.mjs',
   'scripts/v68170-voir-album-button-ui.mjs',
   'scripts/v68180-android-home-widget.mjs',
+  'scripts/v681801-widget-service-marker-fix.mjs',
   'scripts/v68132-restore-exact-gradient-a-splash.mjs',
   'scripts/v681322-android12-splash-theme-fix.mjs',
   'scripts/v681321-splash-safety-lock.mjs'
@@ -62,4 +63,4 @@ for(const script of [
   execSync(`node ${script}`,{cwd:root,stdio:'inherit',shell:true});
 }
 
-console.log('Audify V68.18 safe patch chain complete: native Android home widget + FROZEN album detector + Voir album UI + playback continuity + Gradient-A splash lock.');
+console.log('Audify V68.18 safe patch chain complete: native Android home widget + compiled widget bridge marker + FROZEN album detector + Voir album UI + playback continuity + Gradient-A splash lock.');
