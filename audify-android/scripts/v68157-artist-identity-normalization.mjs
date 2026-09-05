@@ -33,8 +33,8 @@ replaceRequired(
         else if((TextUtils.isEmpty(artist)||looksGenericArtist(artist))&&!TextUtils.isEmpty(yt.artist))artist=cleanArtist(yt.artist);`,
 `        String artist=cleanArtist(rawArtist);
 
-        // V68.15.7 — normalize the raw player/channel label BEFORE any catalogue lookup.
-        // Generic descriptive wrappers are metadata noise, not part of an artist's identity.
+        // V68.15.7 — canonicalize the raw player/channel label BEFORE every catalogue lookup.
+        // This is generic metadata cleanup; no song, artist or album mapping exists here.
         String rawCanonical=canonicalArtistFromDescriptor(artist);
         if(!TextUtils.isEmpty(rawCanonical))artist=cleanArtist(rawCanonical);
 
@@ -43,8 +43,8 @@ replaceRequired(
             String evidenceCanonical=canonicalArtistFromDescriptor(evidenceArtist);
             if(!TextUtils.isEmpty(evidenceCanonical))evidenceArtist=cleanArtist(evidenceCanonical);
 
-            // A structured title·artist block is direct recording metadata and is allowed to
-            // outrank a public channel label even when YouTube did not classify the upload as Topic.
+            // A structured title·artist block is direct recording metadata. It can outrank
+            // a public channel label even when YouTube did not classify the upload as Topic.
             if(yt.structuredIdentity||yt.topic||TextUtils.isEmpty(artist)||looksGenericArtist(artist)||artistMatch(evidenceArtist,artist)){
                 artist=evidenceArtist;
             }
@@ -61,8 +61,8 @@ replaceRequired(
         }`,
 `        String embeddedArtist=parseOfficialDescriptionArtist(y.description,cleanTitle(y.title));
         if(!TextUtils.isEmpty(embeddedArtist)){
-            // The parser already requires the left side of "title · artist" to match the
-            // current recording, so this evidence is usable for Topic and non-Topic uploads.
+            // The parser already requires the title side of "title · artist" to match the
+            // current recording, therefore the artist identity is usable on Topic and non-Topic uploads.
             y.artist=cleanArtist(embeddedArtist);
             y.structuredIdentity=true;
         }else{
@@ -70,33 +70,6 @@ replaceRequired(
             if(!TextUtils.isEmpty(descriptorArtist))y.artist=cleanArtist(descriptorArtist);
         }`,
 'structured description artist trust'
-);
-
-replaceRequired(
-`    private static String canonicalArtistFromDescriptor(String value){
-        if(TextUtils.isEmpty(value))return "";
-        String v=value.trim().replaceAll("\\s+"," ");
-        String stripped=v.replaceFirst("(?i)^(?:(?:le|la|the)\\s+)?(?:rappeur|rappeuse|rapper|chanteur|chanteuse|singer|artiste|artist)\\s+"," ").trim();
-        stripped=stripped.replaceFirst("(?i)\\s+-\\s+topic$","").trim();
-        stripped=stripped.replaceFirst("(?i)\\s+official$","").trim();
-        return stripped.length()>=2&&!norm(stripped).equals(norm(v))?stripped:"";
-    }`,
-`    private static String canonicalArtistFromDescriptor(String value){
-        if(TextUtils.isEmpty(value))return "";
-        String v=value.trim().replaceAll("\\s+"," ");
-        String stripped=v;
-
-        // Human/descriptive prefixes frequently supplied by search/video metadata.
-        stripped=stripped.replaceFirst("(?i)^(?:(?:le|la|l'|the)\\s+)?(?:rappeur|rappeuse|rapper|chanteur|chanteuse|singer|artiste|artist|groupe|band)\\s+"," ").trim();
-        stripped=stripped.replaceFirst("(?i)^(?:chaine|chaîne|channel)\\s+(?:officielle?|official)\\s+(?:de|of)\\s+"," ").trim();
-
-        // Platform/channel decorations are removed only when they are clear suffix wrappers.
-        stripped=stripped.replaceFirst("(?i)\\s*-\\s*(?:topic|official(?:\\s+(?:music|artist|channel))?)$","").trim();
-        stripped=stripped.replaceFirst("(?i)\\s+official(?:\\s+(?:music|artist|channel))?$","").trim();
-
-        return stripped.length()>=2&&!norm(stripped).equals(norm(v))?stripped:"";
-    }`,
-'generic descriptive artist canonicalizer'
 );
 
 await writeFile(metaPath,src,'utf8');
