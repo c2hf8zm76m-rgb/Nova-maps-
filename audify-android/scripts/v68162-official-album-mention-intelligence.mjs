@@ -37,7 +37,7 @@ const helper=String.raw`    private static String parseNaturalLanguageAlbumMenti
             if(raw==null)continue;
             String line=raw.trim();
             if(line.length()<6||line.length()>420)continue;
-            String normalizedLine=line.replace('’','\'').replace('‘','\'').replace('“','"').replace('”','"');
+            String normalizedLine=line.replace("’","'").replace("‘","'").replace("“","\"").replace("”","\"");
             String low=normalizedLine.toLowerCase(Locale.ROOT);
             for(String marker:markers){
                 int p=low.indexOf(marker);
