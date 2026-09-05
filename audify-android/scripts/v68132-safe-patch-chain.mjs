@@ -29,6 +29,7 @@ for(const script of [
   'scripts/v68133-album-playlist-save-fix.mjs',
   'scripts/v68140-album-intelligence2.mjs',
   'scripts/v68141-album-intelligence-recall-fix.mjs',
+  'scripts/v68150-youtube-music-album-resolver.mjs',
   'scripts/v68132-restore-exact-gradient-a-splash.mjs',
   'scripts/v681322-android12-splash-theme-fix.mjs',
   'scripts/v681321-splash-safety-lock.mjs'
@@ -36,4 +37,4 @@ for(const script of [
   execSync(`node ${script}`,{cwd:root,stdio:'inherit',shell:true});
 }
 
-console.log('Audify V68.14.1 safe patch chain complete: Album Intelligence 2.0 recall restored + album playlist save + Gradient-A splash lock.');
+console.log('Audify V68.15 safe patch chain complete: YouTube Music primary album relation + Album Intelligence fallback + no persistent album identity cache + Gradient-A splash lock.');
