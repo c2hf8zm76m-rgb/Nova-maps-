@@ -109,7 +109,7 @@ const deezerMethodAnchor='    private static AlbumResult scanDiscography(long ar
 const deezerArtistMethod=`    private static ArrayList<ArtistSeed> findArtistSeedsByName(String artist)throws Exception{
         ArrayList<ArtistSeed> out=new ArrayList<>();
         Set<Long> seen=new HashSet<>();
-        for(String query:new String[]{artist,"artist:\""+artist+"\""}){
+        for(String query:new String[]{artist}){
             JSONObject root=get(API+"/search/artist?q="+enc(query)+"&limit=30");
             JSONArray data=root.optJSONArray("data");if(data==null)continue;
             for(int i=0;i<data.length();i++){
