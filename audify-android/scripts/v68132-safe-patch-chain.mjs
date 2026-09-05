@@ -33,6 +33,7 @@ for(const script of [
   'scripts/v68151-ytmusic-coherence-guard.mjs',
   'scripts/v68152-ytmusic-session-stability.mjs',
   'scripts/v68153-canonical-artist-album-guard.mjs',
+  'scripts/v681531-canonical-guard-compile-fix.mjs',
   'scripts/v68132-restore-exact-gradient-a-splash.mjs',
   'scripts/v681322-android12-splash-theme-fix.mjs',
   'scripts/v681321-splash-safety-lock.mjs'
