@@ -1,4 +1,4 @@
-name: Build Audify Android V68.14.1 Album Intelligence Recall Fix
+name: Build Audify Android V68.15 YouTube Music Album Resolver
 
 on:
   workflow_dispatch:
@@ -58,26 +58,28 @@ jobs:
         working-directory: audify-android
         run: node scripts/v68132-safe-patch-chain.mjs
 
-      - name: Build V68.14.1 APK
+      - name: Build V68.15 APK
         working-directory: audify-android/android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Prepare V68.14.1 APK and permanent verification
+      - name: Prepare V68.15 APK and permanent verification
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.14.1-ALBUM-RECALL-FIX.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.15-YTMUSIC-ALBUM-RESOLVER.apk
           python - <<'PY'
           import json, os, re, zipfile
-          p='audify-android/releases/Audify-V68.14.1-ALBUM-RECALL-FIX.apk'
+          p='audify-android/releases/Audify-V68.15-YTMUSIC-ALBUM-RESOLVER.apk'
           with zipfile.ZipFile(p) as z:
               dex=[n for n in z.namelist() if re.fullmatch(r'classes\d*\.dex',n)]
               all_dex=b''.join(z.read(n) for n in dex)
           required={
+              'ytmusic_primary_resolver':b'AUDIFY_V6815_YTMUSIC_PRIMARY_RESOLVER',
+              'ytmusic_direct_album_relation':b'YTMUSIC_DIRECT_ALBUM_RELATION',
+              'no_persistent_album_cache':b'AUDIFY_V6815_NO_PERSISTENT_ALBUM_CACHE',
               'album_intelligence_2':b'AUDIFY_V6814_ALBUM_INTELLIGENCE_2',
               'album_recall_fix':b'AUDIFY_V68141_ALBUM_RECALL_FIX',
-              'youtube_art_track_evidence':b'MusicBrainz URL + YouTube Art Track',
               'album_playlist_save_fix':b'AUDIFY_V68133_ALBUM_PLAYLIST_SAVE_FIX',
               'real_gradient_a_marker':b'AUDIFY_V6812652_EXACT_GRADIENT_A_SPLASH',
               'gradient_view':b'AudifyGradientMarkView',
@@ -91,7 +93,7 @@ jobs:
               'pulse_ring':b'startRingPulse',
               'pulse_logo_shell':b'logoShell',
           }
-          report={'version':'V68.14.1','bytes':os.path.getsize(p),'dex':dex}
+          report={'version':'V68.15','bytes':os.path.getsize(p),'dex':dex}
           for k,v in required.items(): report[k]=v in all_dex
           for k,v in forbidden.items(): report[k]=v in all_dex
           missing=[k for k in required if not report[k]]
@@ -99,29 +101,29 @@ jobs:
           if missing: raise SystemExit('Required Audify markers missing: '+', '.join(missing))
           if bad: raise SystemExit('Forbidden legacy behavior detected: '+', '.join(bad))
           print(json.dumps(report,indent=2,ensure_ascii=False))
-          open('audify-android/releases/V68.14.1-ALBUM-RECALL-FIX-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
+          open('audify-android/releases/V68.15-YTMUSIC-ALBUM-RESOLVER-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
           PY
 
-      - name: Upload V68.14.1 APK artifact
+      - name: Upload V68.15 APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.14.1-ALBUM-RECALL-FIX-APK
+          name: Audify-V68.15-YTMUSIC-ALBUM-RESOLVER-APK
           path: |
-            audify-android/releases/Audify-V68.14.1-ALBUM-RECALL-FIX.apk
-            audify-android/releases/V68.14.1-ALBUM-RECALL-FIX-REPORT.json
+            audify-android/releases/Audify-V68.15-YTMUSIC-ALBUM-RESOLVER.apk
+            audify-android/releases/V68.15-YTMUSIC-ALBUM-RESOLVER-REPORT.json
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish V68.14.1 APK in repository
+      - name: Publish V68.15 APK in repository
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.14.1-ALBUM-RECALL-FIX.apk
-          git add -f audify-android/releases/V68.14.1-ALBUM-RECALL-FIX-REPORT.json
+          git add -f audify-android/releases/Audify-V68.15-YTMUSIC-ALBUM-RESOLVER.apk
+          git add -f audify-android/releases/V68.15-YTMUSIC-ALBUM-RESOLVER-REPORT.json
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.14.1 Album Recall Fix APK'
+          git commit -m 'Publish Audify V68.15 YouTube Music Album Resolver APK'
           git pull --rebase origin main
           git push origin HEAD:main
