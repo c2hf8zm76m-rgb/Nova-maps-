@@ -31,6 +31,7 @@ for(const script of [
   'scripts/v68141-album-intelligence-recall-fix.mjs',
   'scripts/v68150-youtube-music-album-resolver.mjs',
   'scripts/v68151-ytmusic-coherence-guard.mjs',
+  'scripts/v68152-ytmusic-session-stability.mjs',
   'scripts/v68132-restore-exact-gradient-a-splash.mjs',
   'scripts/v681322-android12-splash-theme-fix.mjs',
   'scripts/v681321-splash-safety-lock.mjs'
@@ -38,4 +39,4 @@ for(const script of [
   execSync(`node ${script}`,{cwd:root,stdio:'inherit',shell:true});
 }
 
-console.log('Audify V68.15.1 safe patch chain complete: YouTube Music primary resolver + coherence guard + Album Intelligence fallback + no persistent album cache + Gradient-A splash lock.');
+console.log('Audify V68.15.2 safe patch chain complete: YouTube Music primary resolver + coherence guard + session stability + Album Intelligence fallback + no persistent album cache + Gradient-A splash lock.');
