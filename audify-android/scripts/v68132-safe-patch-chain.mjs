@@ -37,6 +37,7 @@ for(const script of [
   'scripts/v68154-playback-continuity-timestamps.mjs',
   'scripts/v68155-deezer-canonical-album-crosscheck.mjs',
   'scripts/v68156-official-metadata-identity.mjs',
+  'scripts/v68157-artist-identity-normalization.mjs',
   'scripts/v68132-restore-exact-gradient-a-splash.mjs',
   'scripts/v681322-android12-splash-theme-fix.mjs',
   'scripts/v681321-splash-safety-lock.mjs'
@@ -44,4 +45,4 @@ for(const script of [
   execSync(`node ${script}`,{cwd:root,stdio:'inherit',shell:true});
 }
 
-console.log('Audify V68.15.6 safe patch chain complete: official metadata identity + Deezer canonical cross-check + playback continuity + timestamps + YouTube Music stability + Gradient-A splash lock.');
+console.log('Audify V68.15.7 safe patch chain complete: raw artist canonicalization + structured description trust + official metadata identity + catalogue cross-checks + playback continuity + Gradient-A splash lock.');
