@@ -1,0 +1,163 @@
+name: Build Audify Android V69.0 Multi Widget
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'audify/**'
+      - 'audify-android/**'
+      - '!audify-android/releases/**'
+      - '.github/workflows/audify-android-v6900-build.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audify-android-v6900-multi-widget-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Audify Android dependencies
+        working-directory: audify-android
+        run: npm install
+
+      - name: Prepare Audify web UI
+        working-directory: audify-android
+        run: npm run prepare:web
+
+      - name: Generate Capacitor Android project
+        working-directory: audify-android
+        run: npx cap add android
+
+      - name: Sync Capacitor Android
+        working-directory: audify-android
+        run: npx cap sync android
+
+      - name: Enforce frozen album detection engine
+        working-directory: audify-android
+        run: |
+          ACTUAL="$(git hash-object scripts/v68171-album-engine-freeze-lock.mjs)"
+          EXPECTED="66189e7379c216f3eef8af35b4f95724e770b209"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "AUDIFY ALBUM ENGINE FREEZE LOCK CHANGED"
+            echo "expected=$EXPECTED"
+            echo "actual=$ACTUAL"
+            exit 1
+          fi
+          node scripts/v68171-album-engine-freeze-lock.mjs
+
+      - name: Apply Audify V69.0 safe patch chain
+        working-directory: audify-android
+        run: node scripts/v68132-safe-patch-chain.mjs
+
+      - name: Verify generated V69.0 Android project
+        working-directory: audify-android
+        run: |
+          grep -q 'versionCode 6900' android/app/build.gradle
+          grep -q 'versionName "69.0"' android/app/build.gradle
+          grep -q 'android:name=".AudifyPlayerWidget"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:name=".AudifyMiniWidget"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:name=".AudifyFavoritesWidget"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:name=".AudifyResumeWidget"' android/app/src/main/AndroidManifest.xml
+          grep -q '@xml/audify_favorites_widget_info' android/app/src/main/AndroidManifest.xml
+          grep -q '@xml/audify_resume_widget_info' android/app/src/main/AndroidManifest.xml
+
+      - name: Build V69.0 APK
+        working-directory: audify-android/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Prepare V69.0 APK and verification report
+        run: |
+          mkdir -p audify-android/releases
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V69.0-ANDROID-MULTI-WIDGET.apk
+          python - <<'PY'
+          import json, os, re, zipfile
+          p='audify-android/releases/Audify-V69.0-ANDROID-MULTI-WIDGET.apk'
+          with zipfile.ZipFile(p) as z:
+              dex=[n for n in z.namelist() if re.fullmatch(r'classes\d*\.dex',n)]
+              all_dex=b''.join(z.read(n) for n in dex)
+              names=set(z.namelist())
+          required={
+              'v69_widget_pack':b'AUDIFY_V6900_ANDROID_MULTI_WIDGET',
+              'favorites_widget':b'AUDIFY_V6900_FAVORITES_WIDGET',
+              'resume_recent_widget':b'AUDIFY_V6900_RESUME_RECENT_WIDGET',
+              'resume_current_position':b'AUDIFY_V6900_RESUME_CURRENT_POSITION',
+              'player_widget':b'AUDIFY_V68180_ANDROID_HOME_WIDGET',
+              'mini_widget':b'AUDIFY_V68190_MINI_WIDGET',
+              'widget_service_bridge':b'AUDIFY_V68180_WIDGET_SERVICE_BRIDGE',
+          }
+          providers={
+              'player_provider':b'AudifyPlayerWidget' in all_dex,
+              'mini_provider':b'AudifyMiniWidget' in all_dex,
+              'favorites_provider':b'AudifyFavoritesWidget' in all_dex,
+              'resume_provider':b'AudifyResumeWidget' in all_dex,
+          }
+          report={
+              'version':'V69.0',
+              'version_name':'69.0',
+              'version_code':6900,
+              'visible_widgets':['Player','Mini Control','Favorites','Resume/Recent'],
+              'bytes':os.path.getsize(p),
+              'dex':dex,
+              **providers,
+          }
+          for k,v in required.items(): report[k]=v in all_dex
+          report['widget_resources_present']=all(any(token in n for n in names) for token in (
+              'audify_widget_player','audify_widget_mini','audify_widget_quick',
+              'audify_favorites_widget_info','audify_resume_widget_info'
+          ))
+          missing=[k for k in required if not report[k]]
+          missing += [k for k,v in providers.items() if not v]
+          if not report['widget_resources_present']: missing.append('widget_resources_present')
+          if missing: raise SystemExit('Required Audify V69.0 markers missing: '+', '.join(missing))
+          print(json.dumps(report,indent=2,ensure_ascii=False))
+          open('audify-android/releases/V69.0-ANDROID-MULTI-WIDGET-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
+          PY
+
+      - name: Upload V69.0 APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Audify-V69.0-ANDROID-MULTI-WIDGET-APK
+          path: |
+            audify-android/releases/Audify-V69.0-ANDROID-MULTI-WIDGET.apk
+            audify-android/releases/V69.0-ANDROID-MULTI-WIDGET-REPORT.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish V69.0 APK in repository
+        continue-on-error: true
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f audify-android/releases/Audify-V69.0-ANDROID-MULTI-WIDGET.apk
+          git add -f audify-android/releases/V69.0-ANDROID-MULTI-WIDGET-REPORT.json
+          if git diff --cached --quiet; then
+            echo 'APK unchanged'
+            exit 0
+          fi
+          git commit -m 'Publish Audify V69.0 Android Multi Widget APK'
+          git pull --rebase origin main
+          git push origin HEAD:main
