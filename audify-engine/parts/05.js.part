@@ -1,0 +1,32 @@
+  const scored=groups.map(g=>{const sources=new Set(g.map(x=>x.source));const rep=chooseRepresentative(g,input,evidence);let score=g.reduce((n,x)=>n+x.score*sourceWeight(x.source),0)/Math.max(1,g.length);score+=(sources.size-1)*34;if(sources.has('youtube_music'))score+=12;if(sources.has('deezer'))score+=8;if(sources.has('apple'))score+=6;if(sources.has('musicbrainz'))score+=5;if(evidence.albumHint)score+=sim(rep.title,evidence.albumHint)*28;score-=badEditionPenalty(rep.title,input.title,evidence.albumHint);const maxTracks=Math.max(...g.map(x=>x.trackCount||0));if(maxTracks>1)score+=15;else score-=55;return {g,rep,sources:[...sources],score,maxTracks};}).sort((a,b)=>b.score-a.score);
+  const best=scored[0];if(!best)return {album:null,confidence:0,reason:'no candidates',groups:[]};
+  const direct=best.g.find(x=>x.source==='youtube_music'&&/Direct Relation/.test(x.reason)&&x.trackCount>1&&x.score>=95);
+  const reliable=best.maxTracks>1 && (best.sources.length>=2 ? best.score>=82 : direct ? best.score>=92 : best.score>=118);
+  if(!reliable)return {album:null,confidence:Math.max(0,Math.min(99,Math.round(best.score*.72))),reason:'no reliable multi-track canonical album',groups:scored.slice(0,5)};
+  let rep=best.rep;const richest=[...best.g].sort((a,b)=>(b.tracks?.length||0)-(a.tracks?.length||0))[0];if(richest&&richest.tracks?.length>rep.tracks?.length)rep={...rep,tracks:richest.tracks,trackCount:richest.trackCount};if(!rep.cover){rep.cover=best.g.find(x=>x.cover)?.cover||''}if(!rep.year){rep.year=best.g.find(x=>x.year)?.year||null}
+  return {album:{...rep,consensusSources:best.sources,evidence:best.g.map(x=>({source:x.source,title:x.title,artist:x.artist,score:Math.round(x.score),reason:x.reason,trackCount:x.trackCount,id:x.id}))},confidence:Math.max(55,Math.min(99,Math.round(58+best.sources.length*9+Math.min(18,(best.score-80)/4)))),reason:best.sources.length>=2?'multi-source canonical consensus':direct?'YouTube Music direct canonical relation':'strong single-source canonical proof',groups:scored.slice(0,5)};
+}
+
+async function detect(payload){
+  const raw={videoId:safe(payload.videoId),title:safe(payload.title),artist:safe(payload.artist),durationMs:Number(payload.durationMs)||0,description:safe(payload.description)};
+  if(!raw.title&&!raw.videoId)throw new Error('title ou videoId requis');
+  const key=JSON.stringify([raw.videoId,norm(raw.title),norm(raw.artist),Math.round(raw.durationMs/5000)]);const hit=CACHE.get(key);if(hit&&Date.now()-hit.at<DAY)return {...hit.value,cached:true};
+  const evidence=await youtubeEvidence(raw);const input={...raw,title:cleanTitle(evidence.title||raw.title),artist:cleanArtist(evidence.artist||raw.artist),durationMs:evidence.durationMs||raw.durationMs};
+  const started=Date.now();
+  const ytmP=resolveYouTubeMusic(input,evidence).catch(e=>(evidence.errors.push(`ytmusic:${e.message}`),[]));
+  // Fast proof pipeline mirrors the APK idea: Apple + Deezer in parallel while MB runs too.
+  const appleP=resolveApple(input,evidence).catch(e=>(evidence.errors.push(`apple:${e.message}`),[]));
+  const deezerP=resolveDeezer(input,evidence).catch(e=>(evidence.errors.push(`deezer:${e.message}`),[]));
+  const mbP=resolveMusicBrainz(input,evidence).catch(e=>(evidence.errors.push(`mb:${e.message}`),[]));
+  const [ytm,apple,deezer,mb]=await Promise.all([ytmP,appleP,deezerP,mbP]);
+  const candidates=[...ytm,...deezer,...apple,...mb];const chosen=consensus(candidates,input,evidence);
+  const value={ok:true,engine:'Audify Album Engine 70.5.5 Web Port',version:'70.5.5-web.1',input,evidence:{title:evidence.title,artist:evidence.artist,albumHint:evidence.albumHint,descriptionPresent:!!evidence.description},album:chosen.album,confidence:chosen.confidence,decision:chosen.reason,diagnostics:{durationMs:Date.now()-started,candidateCount:candidates.length,sources:{youtubeMusic:ytm.slice(0,3).map(slim),deezer:deezer.slice(0,3).map(slim),apple:apple.slice(0,3).map(slim),musicBrainz:mb.slice(0,3).map(slim)},errors:evidence.errors.slice(0,12)}};
+  CACHE.set(key,{at:Date.now(),value});return value;
+}
+function slim(a){return {title:a.title,artist:a.artist,year:a.year,trackCount:a.trackCount,score:Math.round(a.score),reason:a.reason,id:a.id};}
+
+module.exports = async function handler(req,res){
+  cors(res);if(req.method==='OPTIONS'){res.statusCode=204;return res.end();}
+  if(req.url==='/'||req.url==='/api'||req.url==='/api/album/health'){return send(res,200,{ok:true,name:'Audify Album Engine',version:'70.5.5-web.1',sources:['YouTube Music','Deezer','Apple/iTunes','MusicBrainz'],strategy:'multi-source canonical consensus'});}
+  try{let body={};if(req.method==='POST'){body=req.body||{};if(typeof body==='string')body=JSON.parse(body||'{}');}else{const u=new URL(req.url,'https://audify.local');body=Object.fromEntries(u.searchParams.entries());}const result=await detect(body);return send(res,200,result);}catch(e){return send(res,500,{ok:false,error:e?.message||String(e),engine:'Audify Album Engine 70.5.5 Web Port'});}
+};
