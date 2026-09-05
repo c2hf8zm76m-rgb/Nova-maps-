@@ -1,4 +1,4 @@
-name: Build Audify Android V68.16 Release Preference Intelligence
+name: Build Audify Android V68.16.1 Apple Release Graph
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: audify-android-v68160-${{ github.ref }}
+  group: audify-android-v68161-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -58,23 +58,27 @@ jobs:
         working-directory: audify-android
         run: node scripts/v68132-safe-patch-chain.mjs
 
-      - name: Build V68.16 APK
+      - name: Build V68.16.1 APK
         working-directory: audify-android/android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Prepare V68.16 APK and permanent verification
+      - name: Prepare V68.16.1 APK and permanent verification
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.16-RELEASE-PREFERENCE-INTELLIGENCE.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.16.1-APPLE-RELEASE-GRAPH.apk
           python - <<'PY'
           import json, os, re, zipfile
-          p='audify-android/releases/Audify-V68.16-RELEASE-PREFERENCE-INTELLIGENCE.apk'
+          p='audify-android/releases/Audify-V68.16.1-APPLE-RELEASE-GRAPH.apk'
           with zipfile.ZipFile(p) as z:
               dex=[n for n in z.namelist() if re.fullmatch(r'classes\d*\.dex',n)]
               all_dex=b''.join(z.read(n) for n in dex)
           required={
+              'apple_release_graph':b'AUDIFY_V68161_APPLE_RELEASE_GRAPH',
+              'multi_variant_title_search':b'AUDIFY_V68161_MULTI_VARIANT_TITLE_SEARCH',
+              'apple_tracklist_relation_proof':b'AUDIFY_V68161_APPLE_TRACKLIST_RELATION_PROOF',
+              'autonomous_single_stays_single':b'AUDIFY_V68161_AUTONOMOUS_SINGLE_STAYS_SINGLE',
               'release_preference_intelligence':b'AUDIFY_V68160_RELEASE_PREFERENCE_INTELLIGENCE',
               'single_to_canonical_album_promotion':b'AUDIFY_V68160_SINGLE_TO_CANONICAL_ALBUM_PROMOTION',
               'autonomous_single_guard':b'AUDIFY_V68160_AUTONOMOUS_SINGLE_GUARD',
@@ -115,7 +119,7 @@ jobs:
               'pulse_ring':b'startRingPulse',
               'pulse_logo_shell':b'logoShell',
           }
-          report={'version':'V68.16','bytes':os.path.getsize(p),'dex':dex}
+          report={'version':'V68.16.1','bytes':os.path.getsize(p),'dex':dex}
           for k,v in required.items(): report[k]=v in all_dex
           for k,v in forbidden.items(): report[k]=v in all_dex
           missing=[k for k in required if not report[k]]
@@ -123,29 +127,29 @@ jobs:
           if missing: raise SystemExit('Required Audify markers missing: '+', '.join(missing))
           if bad: raise SystemExit('Forbidden legacy behavior detected: '+', '.join(bad))
           print(json.dumps(report,indent=2,ensure_ascii=False))
-          open('audify-android/releases/V68.16-RELEASE-PREFERENCE-INTELLIGENCE-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
+          open('audify-android/releases/V68.16.1-APPLE-RELEASE-GRAPH-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
           PY
 
-      - name: Upload V68.16 APK artifact
+      - name: Upload V68.16.1 APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.16-RELEASE-PREFERENCE-INTELLIGENCE-APK
+          name: Audify-V68.16.1-APPLE-RELEASE-GRAPH-APK
           path: |
-            audify-android/releases/Audify-V68.16-RELEASE-PREFERENCE-INTELLIGENCE.apk
-            audify-android/releases/V68.16-RELEASE-PREFERENCE-INTELLIGENCE-REPORT.json
+            audify-android/releases/Audify-V68.16.1-APPLE-RELEASE-GRAPH.apk
+            audify-android/releases/V68.16.1-APPLE-RELEASE-GRAPH-REPORT.json
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish V68.16 APK in repository
+      - name: Publish V68.16.1 APK in repository
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.16-RELEASE-PREFERENCE-INTELLIGENCE.apk
-          git add -f audify-android/releases/V68.16-RELEASE-PREFERENCE-INTELLIGENCE-REPORT.json
+          git add -f audify-android/releases/Audify-V68.16.1-APPLE-RELEASE-GRAPH.apk
+          git add -f audify-android/releases/V68.16.1-APPLE-RELEASE-GRAPH-REPORT.json
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.16 Release Preference Intelligence APK'
+          git commit -m 'Publish Audify V68.16.1 Apple Release Graph APK'
           git pull --rebase origin main
           git push origin HEAD:main
