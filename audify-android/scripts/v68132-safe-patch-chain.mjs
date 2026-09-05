@@ -57,6 +57,7 @@ for(const script of [
   'scripts/v68180-android-home-widget.mjs',
   'scripts/v681801-widget-service-marker-fix.mjs',
   'scripts/v68190-widget-family.mjs',
+  'scripts/v6900-widget-pack.mjs',
   'scripts/v68132-restore-exact-gradient-a-splash.mjs',
   'scripts/v681322-android12-splash-theme-fix.mjs',
   'scripts/v681321-splash-safety-lock.mjs'
@@ -64,4 +65,4 @@ for(const script of [
   execSync(`node ${script}`,{cwd:root,stdio:'inherit',shell:true});
 }
 
-console.log('Audify V68.19 safe patch chain complete: 4 native Android widgets (Player + Mini + Quick Music + Lyrics/Karaoke) + FROZEN album detector + Voir album UI + playback continuity + Gradient-A splash lock.');
+console.log('Audify V69.0 safe patch chain complete: 4 visible native Android widgets (Player + Mini + Favorites + Resume/Recent) + FROZEN album detector + Voir album UI + playback continuity + Gradient-A splash lock.');
