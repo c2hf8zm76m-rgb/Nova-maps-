@@ -85,9 +85,10 @@ const parallel=String.raw`        debug("FAST_PROOF_PIPELINE_START parallel Appl
         debug("FINAL_REJECT no reliable multi-track canonical album");
         return null;`;
 
-// The diagnostic patch has changed whitespace/nearby branches over time, so use
-// the stable runtime markers rather than one historical full-text block.
-const proofRange=/        try\s*\{[\s\S]*?debug\("APPLE_GRAPH_START"\);[\s\S]*?debug\("FINAL_REJECT no reliable multi-track canonical album"\);\s*return null;/;
+// Anchor on the exact Apple fallback try. The first executable statement after
+// this try must be APPLE_GRAPH_START, preventing accidental capture of an older
+// unrelated try block earlier in identify().
+const proofRange=/        try\s*\{\s*debug\("APPLE_GRAPH_START"\);[\s\S]*?debug\("FINAL_REJECT no reliable multi-track canonical album"\);\s*return null;/;
 meta=mustRegex(meta,proofRange,parallel,'Apple-to-final proof range');
 await writeFile(metaPath,meta,'utf8');
 
