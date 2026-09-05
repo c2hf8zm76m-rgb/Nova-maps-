@@ -5,6 +5,11 @@ import { fileURLToPath } from 'node:url';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
+
+// Album detection is frozen as of V68.17. Every normal safe-chain build must
+// pass the immutable detector-source/order guard before any patch is applied.
+execSync('node scripts/v68171-album-engine-freeze-lock.mjs',{cwd:root,stdio:'inherit',shell:true});
+
 const pkg=JSON.parse(await readFile(path.join(root,'package.json'),'utf8'));
 const raw=String(pkg?.scripts?.['android:patch']||'');
 if(!raw.trim()) throw new Error('Audify safe patch chain: package android:patch missing');
@@ -56,4 +61,4 @@ for(const script of [
   execSync(`node ${script}`,{cwd:root,stdio:'inherit',shell:true});
 }
 
-console.log('Audify V68.17 safe patch chain complete: compact Voir album button UI + no album-preview tile + fast parallel proof pipeline + hint-first canonical album lookup + all album guards + playback continuity + Gradient-A splash lock.');
+console.log('Audify V68.17 safe patch chain complete: FROZEN album detector + compact Voir album button UI + fast parallel proof pipeline + all album guards + playback continuity + Gradient-A splash lock.');
