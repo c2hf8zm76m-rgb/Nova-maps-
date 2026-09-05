@@ -12,6 +12,10 @@ function mustReplace(src,from,to,label){
   if(!src.includes(from)) throw new Error('V68.16.6: missing '+label);
   return src.replace(from,to);
 }
+function mustRegex(src,re,to,label){
+  if(!re.test(src)) throw new Error('V68.16.6: missing '+label);
+  return src.replace(re,to);
+}
 
 // -----------------------------------------------------------------------------
 // Fast Proof Pipeline: Apple Release Graph and Deezer Discography are independent
@@ -30,21 +34,6 @@ if(!meta.includes('AUDIFY_V68166_FAST_PROOF_PIPELINE')){
     'metadata marker anchor'
   );
 }
-
-const sequential=String.raw`        try{
-            debug("APPLE_GRAPH_START");
-            Album appleGraph=AudifyAppleReleaseGraphResolver.identify(title,artist,durationMs,hint);
-            if(appleGraph!=null&&appleGraph.tracks.size()>=4&&appleGraph.confidence>=90){debug("APPLE_GRAPH_ACCEPT "+diagSafe(appleGraph.title)+" tracks="+appleGraph.tracks.size()+" conf="+appleGraph.confidence);return appleGraph;}
-            debug("APPLE_GRAPH_RETURNED_NULL_OR_WEAK");
-        }catch(Throwable e){debug("APPLE_GRAPH_ERROR "+e.getClass().getSimpleName()+": "+diagSafe(e.getMessage()));}
-        try{
-            debug("DEEZER_DISCOGRAPHY_START");
-            Album promoted=AudifyReleasePreferenceResolver.identify(title,artist,durationMs,hint);
-            if(promoted!=null&&promoted.tracks.size()>=4&&promoted.confidence>=90){debug("DEEZER_DISCOGRAPHY_ACCEPT "+diagSafe(promoted.title)+" tracks="+promoted.tracks.size()+" conf="+promoted.confidence);return promoted;}
-            debug("DEEZER_DISCOGRAPHY_RETURNED_NULL_OR_WEAK");
-        }catch(Throwable e){debug("DEEZER_DISCOGRAPHY_ERROR "+e.getClass().getSimpleName()+": "+diagSafe(e.getMessage()));}
-        debug("FINAL_REJECT no reliable multi-track canonical album");
-        return null;`;
 
 const parallel=String.raw`        debug("FAST_PROOF_PIPELINE_START parallel Apple+Deezer");
         final String proofTitle=title,proofArtist=artist,proofHint=hint;
@@ -96,7 +85,10 @@ const parallel=String.raw`        debug("FAST_PROOF_PIPELINE_START parallel Appl
         debug("FINAL_REJECT no reliable multi-track canonical album");
         return null;`;
 
-meta=mustReplace(meta,sequential,parallel,'sequential Apple/Deezer proof block');
+// The diagnostic patch has changed whitespace/nearby branches over time, so use
+// the stable runtime markers rather than one historical full-text block.
+const proofRange=/        try\s*\{[\s\S]*?debug\("APPLE_GRAPH_START"\);[\s\S]*?debug\("FINAL_REJECT no reliable multi-track canonical album"\);\s*return null;/;
+meta=mustRegex(meta,proofRange,parallel,'Apple-to-final proof range');
 await writeFile(metaPath,meta,'utf8');
 
 // -----------------------------------------------------------------------------
@@ -117,9 +109,9 @@ if(!apple.includes('AUDIFY_V68166_APPLE_HINT_EARLY_STOP')){
   );
 }
 
-apple=mustReplace(
+apple=mustRegex(
   apple,
-  '        Set<String> queries=new HashSet<>();\n        queries.add(hint+" "+artist);\n        queries.add(artist+" "+hint);\n        queries.add(hint);',
+  /        Set<String> queries=new HashSet<>\(\);\s*queries\.add\(hint\+" "\+artist\);\s*queries\.add\(artist\+" "\+hint\);\s*queries\.add\(hint\);/,
   '        Set<String> queries=new java.util.LinkedHashSet<>();\n        queries.add(hint+" "+artist);\n        queries.add(artist+" "+hint);\n        queries.add(hint);',
   'ordered hint queries'
 );
@@ -128,10 +120,10 @@ const methodStart=apple.indexOf('    private static void collectHintAlbumSeeds('
 const methodEnd=apple.indexOf('    private static boolean hasStrongAlbumSeed',methodStart);
 if(methodStart<0||methodEnd<0)throw new Error('V68.16.6: Apple hint method range missing');
 let method=apple.slice(methodStart,methodEnd);
-method=mustReplace(
+method=mustRegex(
   method,
-  '                }\n            }\n            if(!unique.isEmpty())break;',
-  '                }\n                for(Seed exact:unique.values()){\n                    if(norm(exact.collectionName).equals(norm(hint))&&artistMatch(artist,exact.artist)){\n                        AudifyInstantAlbumMetadata.debug("APPLE_HINT_EXACT_EARLY_STOP "+exact.collectionName+" | artist="+exact.artist);\n                        return;\n                    }\n                }\n            }\n            if(!unique.isEmpty())break;',
+  /\n\s*if\(!unique\.isEmpty\(\)\)break;/,
+  '\n                for(Seed exact:unique.values()){\n                    if(norm(exact.collectionName).equals(norm(hint))&&artistMatch(artist,exact.artist)){\n                        AudifyInstantAlbumMetadata.debug("APPLE_HINT_EXACT_EARLY_STOP "+exact.collectionName+" | artist="+exact.artist);\n                        return;\n                    }\n                }\n            if(!unique.isEmpty())break;',
   'exact hint early stop'
 );
 apple=apple.slice(0,methodStart)+method+apple.slice(methodEnd);
