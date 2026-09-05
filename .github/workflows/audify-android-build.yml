@@ -1,4 +1,4 @@
-name: Build Audify Android V68.16.5 Hint-First Release Lookup
+name: Build Audify Android V68.16.6 Fast Proof Pipeline
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: audify-android-v68165-${{ github.ref }}
+  group: audify-android-v68166-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -58,23 +58,27 @@ jobs:
         working-directory: audify-android
         run: node scripts/v68132-safe-patch-chain.mjs
 
-      - name: Build V68.16.5 APK
+      - name: Build V68.16.6 APK
         working-directory: audify-android/android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Prepare V68.16.5 APK and permanent verification
+      - name: Prepare V68.16.6 APK and permanent verification
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.16.5-HINT-FIRST-RELEASE-LOOKUP.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.16.6-FAST-PROOF-PIPELINE.apk
           python - <<'PY'
           import json, os, re, zipfile
-          p='audify-android/releases/Audify-V68.16.5-HINT-FIRST-RELEASE-LOOKUP.apk'
+          p='audify-android/releases/Audify-V68.16.6-FAST-PROOF-PIPELINE.apk'
           with zipfile.ZipFile(p) as z:
               dex=[n for n in z.namelist() if re.fullmatch(r'classes\d*\.dex',n)]
               all_dex=b''.join(z.read(n) for n in dex)
           required={
+              'fast_proof_pipeline':b'AUDIFY_V68166_FAST_PROOF_PIPELINE',
+              'parallel_release_proofs':b'AUDIFY_V68166_PARALLEL_RELEASE_PROOFS',
+              'bounded_proof_wait':b'AUDIFY_V68166_BOUNDED_PROOF_WAIT',
+              'apple_hint_early_stop':b'AUDIFY_V68166_APPLE_HINT_EARLY_STOP',
               'apple_hint_first_lookup':b'AUDIFY_V68165_APPLE_HINT_FIRST_LOOKUP',
               'hint_tracklist_proof':b'AUDIFY_V68165_HINT_TRACKLIST_PROOF',
               'deezer_artist_name_fallback':b'AUDIFY_V68165_DEEZER_ARTIST_NAME_FALLBACK',
@@ -136,7 +140,7 @@ jobs:
               'pulse_ring':b'startRingPulse',
               'pulse_logo_shell':b'logoShell',
           }
-          report={'version':'V68.16.5','bytes':os.path.getsize(p),'dex':dex}
+          report={'version':'V68.16.6','bytes':os.path.getsize(p),'dex':dex}
           for k,v in required.items(): report[k]=v in all_dex
           for k,v in forbidden.items(): report[k]=v in all_dex
           missing=[k for k in required if not report[k]]
@@ -144,29 +148,29 @@ jobs:
           if missing: raise SystemExit('Required Audify markers missing: '+', '.join(missing))
           if bad: raise SystemExit('Forbidden legacy behavior detected: '+', '.join(bad))
           print(json.dumps(report,indent=2,ensure_ascii=False))
-          open('audify-android/releases/V68.16.5-HINT-FIRST-RELEASE-LOOKUP-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
+          open('audify-android/releases/V68.16.6-FAST-PROOF-PIPELINE-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
           PY
 
-      - name: Upload V68.16.5 APK artifact
+      - name: Upload V68.16.6 APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.16.5-HINT-FIRST-RELEASE-LOOKUP-APK
+          name: Audify-V68.16.6-FAST-PROOF-PIPELINE-APK
           path: |
-            audify-android/releases/Audify-V68.16.5-HINT-FIRST-RELEASE-LOOKUP.apk
-            audify-android/releases/V68.16.5-HINT-FIRST-RELEASE-LOOKUP-REPORT.json
+            audify-android/releases/Audify-V68.16.6-FAST-PROOF-PIPELINE.apk
+            audify-android/releases/V68.16.6-FAST-PROOF-PIPELINE-REPORT.json
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish V68.16.5 APK in repository
+      - name: Publish V68.16.6 APK in repository
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.16.5-HINT-FIRST-RELEASE-LOOKUP.apk
-          git add -f audify-android/releases/V68.16.5-HINT-FIRST-RELEASE-LOOKUP-REPORT.json
+          git add -f audify-android/releases/Audify-V68.16.6-FAST-PROOF-PIPELINE.apk
+          git add -f audify-android/releases/V68.16.6-FAST-PROOF-PIPELINE-REPORT.json
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.16.5 Hint-First Release Lookup APK'
+          git commit -m 'Publish Audify V68.16.6 Fast Proof Pipeline APK'
           git pull --rebase origin main
           git push origin HEAD:main
