@@ -1,0 +1,29 @@
+{
+  "version": "V68.15.1",
+  "bytes": 15830316,
+  "dex": [
+    "classes.dex",
+    "classes2.dex",
+    "classes3.dex",
+    "classes4.dex",
+    "classes5.dex",
+    "classes6.dex",
+    "classes7.dex"
+  ],
+  "ytmusic_primary_resolver": true,
+  "ytmusic_direct_album_relation": true,
+  "ytmusic_coherence_guard": true,
+  "no_persistent_album_cache": true,
+  "album_intelligence_2": true,
+  "album_recall_fix": true,
+  "album_playlist_save_fix": true,
+  "real_gradient_a_marker": true,
+  "gradient_view": true,
+  "clickable_album_tracks": true,
+  "synthetic_album_fallback": false,
+  "pulse_tagline": false,
+  "pulse_loading": false,
+  "pulse_equalizer": false,
+  "pulse_ring": false,
+  "pulse_logo_shell": false
+}
