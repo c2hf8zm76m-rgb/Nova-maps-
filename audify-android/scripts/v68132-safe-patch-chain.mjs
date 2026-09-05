@@ -46,6 +46,7 @@ for(const script of [
   'scripts/v681640-diagnostic-script-compat.mjs',
   'scripts/v68164-album-diagnostic-trace.mjs',
   'scripts/v681641-visible-album-diagnostic-ui.mjs',
+  'scripts/v68165-hint-first-release-lookup.mjs',
   'scripts/v68132-restore-exact-gradient-a-splash.mjs',
   'scripts/v681322-android12-splash-theme-fix.mjs',
   'scripts/v681321-splash-safety-lock.mjs'
@@ -53,4 +54,4 @@ for(const script of [
   execSync(`node ${script}`,{cwd:root,stdio:'inherit',shell:true});
 }
 
-console.log('Audify V68.16.4 safe patch chain complete: robust visible runtime album diagnostic trace + Innertube evidence bridge + all canonical album guards + Gradient-A splash lock.');
+console.log('Audify V68.16.5 safe patch chain complete: hint-first canonical album lookup + runtime diagnostics + Innertube evidence + all album guards + Gradient-A splash lock.');
