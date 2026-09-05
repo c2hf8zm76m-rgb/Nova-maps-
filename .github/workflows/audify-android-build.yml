@@ -1,4 +1,4 @@
-name: Build Audify Android V68.18 Home Widget
+name: Build Audify Android V68.19 Widget Family
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: audify-android-v6818-widget-${{ github.ref }}
+  group: audify-android-v6819-widget-family-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -71,24 +71,30 @@ jobs:
         working-directory: audify-android
         run: node scripts/v68132-safe-patch-chain.mjs
 
-      - name: Build V68.18 APK
+      - name: Build V68.19 APK
         working-directory: audify-android/android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Prepare V68.18 APK and permanent verification
+      - name: Prepare V68.19 APK and permanent verification
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.18-ANDROID-HOME-WIDGET.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.19-WIDGET-FAMILY.apk
           python - <<'PY'
           import json, os, re, zipfile
-          p='audify-android/releases/Audify-V68.18-ANDROID-HOME-WIDGET.apk'
+          p='audify-android/releases/Audify-V68.19-WIDGET-FAMILY.apk'
           with zipfile.ZipFile(p) as z:
               dex=[n for n in z.namelist() if re.fullmatch(r'classes\d*\.dex',n)]
               all_dex=b''.join(z.read(n) for n in dex)
               names=set(z.namelist())
           required={
+              'widget_family':b'AUDIFY_V68190_WIDGET_FAMILY',
+              'mini_widget':b'AUDIFY_V68190_MINI_WIDGET',
+              'quick_music_widget':b'AUDIFY_V68190_QUICK_MUSIC_WIDGET',
+              'recents_favorites_widget':b'AUDIFY_V68190_RECENTS_FAVORITES_WIDGET',
+              'lyrics_widget':b'AUDIFY_V68190_LYRICS_WIDGET',
+              'lyrics_timeline_bridge':b'AUDIFY_V68190_LYRICS_TIMELINE_BRIDGE',
               'android_home_widget':b'AUDIFY_V68180_ANDROID_HOME_WIDGET',
               'widget_playback_controls':b'AUDIFY_V68180_WIDGET_PLAYBACK_CONTROLS',
               'widget_live_artwork':b'AUDIFY_V68180_WIDGET_LIVE_ARTWORK',
@@ -141,46 +147,52 @@ jobs:
               'pulse_logo_shell':b'logoShell',
           }
           report={
-              'version':'V68.18',
+              'version':'V68.19',
               'album_engine_frozen':True,
               'freeze_lock_blob':'66189e7379c216f3eef8af35b4f95724e770b209',
               'bytes':os.path.getsize(p),
               'dex':dex,
-              'widget_provider_class':b'AudifyPlayerWidget' in all_dex,
-              'widget_resources_present':any('audify_widget' in n for n in names),
+              'player_widget_provider':b'AudifyPlayerWidget' in all_dex,
+              'mini_widget_provider':b'AudifyMiniWidget' in all_dex,
+              'quick_widget_provider':b'AudifyQuickMusicWidget' in all_dex,
+              'lyrics_widget_provider':b'AudifyLyricsWidget' in all_dex,
+              'widget_resources_present':all(any(token in n for n in names) for token in (
+                  'audify_widget_player','audify_widget_mini','audify_widget_quick','audify_widget_lyrics'
+              )),
           }
           for k,v in required.items(): report[k]=v in all_dex
           for k,v in forbidden.items(): report[k]=v in all_dex
           missing=[k for k in required if not report[k]]
-          if not report['widget_provider_class']: missing.append('widget_provider_class')
+          for k in ('player_widget_provider','mini_widget_provider','quick_widget_provider','lyrics_widget_provider','widget_resources_present'):
+              if not report[k]: missing.append(k)
           bad=[k for k in forbidden if report[k]]
           if missing: raise SystemExit('Required Audify markers missing: '+', '.join(missing))
           if bad: raise SystemExit('Forbidden legacy behavior detected: '+', '.join(bad))
           print(json.dumps(report,indent=2,ensure_ascii=False))
-          open('audify-android/releases/V68.18-ANDROID-HOME-WIDGET-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
+          open('audify-android/releases/V68.19-WIDGET-FAMILY-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
           PY
 
-      - name: Upload V68.18 APK artifact
+      - name: Upload V68.19 APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.18-ANDROID-HOME-WIDGET-APK
+          name: Audify-V68.19-WIDGET-FAMILY-APK
           path: |
-            audify-android/releases/Audify-V68.18-ANDROID-HOME-WIDGET.apk
-            audify-android/releases/V68.18-ANDROID-HOME-WIDGET-REPORT.json
+            audify-android/releases/Audify-V68.19-WIDGET-FAMILY.apk
+            audify-android/releases/V68.19-WIDGET-FAMILY-REPORT.json
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish V68.18 APK in repository
+      - name: Publish V68.19 APK in repository
         continue-on-error: true
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.18-ANDROID-HOME-WIDGET.apk
-          git add -f audify-android/releases/V68.18-ANDROID-HOME-WIDGET-REPORT.json
+          git add -f audify-android/releases/Audify-V68.19-WIDGET-FAMILY.apk
+          git add -f audify-android/releases/V68.19-WIDGET-FAMILY-REPORT.json
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.18 Android Home Widget APK'
+          git commit -m 'Publish Audify V68.19 Widget Family APK'
           git pull --rebase origin main
           git push origin HEAD:main
