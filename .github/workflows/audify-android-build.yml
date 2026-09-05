@@ -1,4 +1,4 @@
-name: Build Audify Android V68.17 Frozen Album Engine
+name: Build Audify Android V68.18 Home Widget
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: audify-android-v6817-frozen-${{ github.ref }}
+  group: audify-android-v6818-widget-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -71,28 +71,31 @@ jobs:
         working-directory: audify-android
         run: node scripts/v68132-safe-patch-chain.mjs
 
-      - name: Build V68.17 APK
+      - name: Build V68.18 APK
         working-directory: audify-android/android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Prepare V68.17 APK and permanent verification
+      - name: Prepare V68.18 APK and permanent verification
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.17-VOIR-ALBUM-BUTTON-UI.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.18-ANDROID-HOME-WIDGET.apk
           python - <<'PY'
           import json, os, re, zipfile
-          p='audify-android/releases/Audify-V68.17-VOIR-ALBUM-BUTTON-UI.apk'
+          p='audify-android/releases/Audify-V68.18-ANDROID-HOME-WIDGET.apk'
           with zipfile.ZipFile(p) as z:
               dex=[n for n in z.namelist() if re.fullmatch(r'classes\d*\.dex',n)]
               all_dex=b''.join(z.read(n) for n in dex)
+              names=set(z.namelist())
           required={
+              'android_home_widget':b'AUDIFY_V68180_ANDROID_HOME_WIDGET',
+              'widget_playback_controls':b'AUDIFY_V68180_WIDGET_PLAYBACK_CONTROLS',
+              'widget_live_artwork':b'AUDIFY_V68180_WIDGET_LIVE_ARTWORK',
+              'widget_service_bridge':b'AUDIFY_V68180_WIDGET_SERVICE_BRIDGE',
               'voir_album_button_ui':b'AUDIFY_V68170_VOIR_ALBUM_BUTTON_UI',
               'no_album_preview_images':b'AUDIFY_V68170_NO_ALBUM_PREVIEW_IMAGES',
               'album_button_hidden_until_resolved':b'AUDIFY_V68170_ALBUM_BUTTON_HIDDEN_UNTIL_RESOLVED',
-              'album_cta_tag':b'AUDIFY_ALBUM_CTA_V68170',
-              'voir_album_label':'Voir album'.encode(),
               'fast_proof_pipeline':b'AUDIFY_V68166_FAST_PROOF_PIPELINE',
               'parallel_release_proofs':b'AUDIFY_V68166_PARALLEL_RELEASE_PROOFS',
               'bounded_proof_wait':b'AUDIFY_V68166_BOUNDED_PROOF_WAIT',
@@ -103,37 +106,16 @@ jobs:
               'hint_discography_proof':b'AUDIFY_V68165_HINT_DISCOGRAPHY_PROOF',
               'album_diagnostic_trace':b'AUDIFY_V68164_ALBUM_DIAGNOSTIC_TRACE',
               'visible_failure_diagnostic':b'AUDIFY_V68164_VISIBLE_FAILURE_DIAGNOSTIC',
-              'apple_reject_reasons':b'AUDIFY_V68164_APPLE_REJECT_REASONS',
-              'deezer_reject_reasons':b'AUDIFY_V68164_DEEZER_REJECT_REASONS',
               'innertube_video_details':b'AUDIFY_V68163_INNERTUBE_VIDEO_DETAILS',
               'video_description_evidence':b'AUDIFY_V68163_VIDEO_DESCRIPTION_EVIDENCE',
-              'innertube_video_evidence_bridge':b'AUDIFY_V68163_INNERTUBE_VIDEO_EVIDENCE_BRIDGE',
-              'html_optional_fallback':b'AUDIFY_V68163_HTML_OPTIONAL_FALLBACK',
-              'video_id_to_album_engine':b'AUDIFY_V68163_VIDEO_ID_TO_ALBUM_ENGINE',
               'official_album_mention_intelligence':b'AUDIFY_V68162_OFFICIAL_ALBUM_MENTION_INTELLIGENCE',
-              'natural_language_album_hint':b'AUDIFY_V68162_NATURAL_LANGUAGE_ALBUM_HINT',
-              'description_release_relation':b'AUDIFY_V68162_DESCRIPTION_RELEASE_RELATION',
-              'hint_to_collection_lookup':b'AUDIFY_V68162_HINT_TO_COLLECTION_LOOKUP',
               'apple_release_graph':b'AUDIFY_V68161_APPLE_RELEASE_GRAPH',
-              'multi_variant_title_search':b'AUDIFY_V68161_MULTI_VARIANT_TITLE_SEARCH',
-              'apple_tracklist_relation_proof':b'AUDIFY_V68161_APPLE_TRACKLIST_RELATION_PROOF',
-              'autonomous_single_stays_single':b'AUDIFY_V68161_AUTONOMOUS_SINGLE_STAYS_SINGLE',
               'release_preference_intelligence':b'AUDIFY_V68160_RELEASE_PREFERENCE_INTELLIGENCE',
-              'single_to_canonical_album_promotion':b'AUDIFY_V68160_SINGLE_TO_CANONICAL_ALBUM_PROMOTION',
-              'autonomous_single_guard':b'AUDIFY_V68160_AUTONOMOUS_SINGLE_GUARD',
-              'artist_discography_proof':b'AUDIFY_V68160_ARTIST_DISCOGRAPHY_PROOF',
               'artist_identity_fusion':b'AUDIFY_V68159_ARTIST_IDENTITY_FUSION',
-              'structured_video_title_proof':b'AUDIFY_V68159_STRUCTURED_VIDEO_TITLE_PROOF',
-              'channel_alias_independence':b'AUDIFY_V68159_CHANNEL_ALIAS_INDEPENDENCE',
               'localized_official_metadata':b'AUDIFY_V68158_LOCALIZED_OFFICIAL_METADATA',
-              'french_official_channel_normalization':b'AUDIFY_V68158_FRENCH_OFFICIAL_CHANNEL_NORMALIZATION',
               'raw_artist_canonicalization':b'AUDIFY_V68157_RAW_ARTIST_CANONICALIZATION',
-              'structured_description_trust':b'AUDIFY_V68157_STRUCTURED_DESCRIPTION_TRUST',
               'official_metadata_identity':b'AUDIFY_V68156_OFFICIAL_METADATA_IDENTITY',
-              'description_artist_proof':b'AUDIFY_V68156_DESCRIPTION_ARTIST_PROOF',
-              'description_album_proof':b'AUDIFY_V68156_DESCRIPTION_ALBUM_PROOF',
               'deezer_canonical_album_crosscheck':b'AUDIFY_V68155_DEEZER_CANONICAL_ALBUM_CROSSCHECK',
-              'deezer_tracklist_proof':b'AUDIFY_V68155_DEEZER_TRACKLIST_PROOF',
               'resolver_continuity':b'AUDIFY_V68154_RESOLVER_CONTINUITY',
               'playback_continuity':b'AUDIFY_V68154_PLAYBACK_CONTINUITY',
               'player_timestamps':b'AUDIFY_V68154_PLAYER_TIMESTAMPS',
@@ -158,38 +140,47 @@ jobs:
               'pulse_ring':b'startRingPulse',
               'pulse_logo_shell':b'logoShell',
           }
-          report={'version':'V68.17','album_engine_frozen':True,'freeze_lock_blob':'66189e7379c216f3eef8af35b4f95724e770b209','bytes':os.path.getsize(p),'dex':dex}
+          report={
+              'version':'V68.18',
+              'album_engine_frozen':True,
+              'freeze_lock_blob':'66189e7379c216f3eef8af35b4f95724e770b209',
+              'bytes':os.path.getsize(p),
+              'dex':dex,
+              'widget_provider_class':b'AudifyPlayerWidget' in all_dex,
+              'widget_resources_present':any('audify_widget' in n for n in names),
+          }
           for k,v in required.items(): report[k]=v in all_dex
           for k,v in forbidden.items(): report[k]=v in all_dex
           missing=[k for k in required if not report[k]]
+          if not report['widget_provider_class']: missing.append('widget_provider_class')
           bad=[k for k in forbidden if report[k]]
           if missing: raise SystemExit('Required Audify markers missing: '+', '.join(missing))
           if bad: raise SystemExit('Forbidden legacy behavior detected: '+', '.join(bad))
           print(json.dumps(report,indent=2,ensure_ascii=False))
-          open('audify-android/releases/V68.17-VOIR-ALBUM-BUTTON-UI-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
+          open('audify-android/releases/V68.18-ANDROID-HOME-WIDGET-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
           PY
 
-      - name: Upload V68.17 APK artifact
+      - name: Upload V68.18 APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.17-FROZEN-ALBUM-ENGINE-APK
+          name: Audify-V68.18-ANDROID-HOME-WIDGET-APK
           path: |
-            audify-android/releases/Audify-V68.17-VOIR-ALBUM-BUTTON-UI.apk
-            audify-android/releases/V68.17-VOIR-ALBUM-BUTTON-UI-REPORT.json
+            audify-android/releases/Audify-V68.18-ANDROID-HOME-WIDGET.apk
+            audify-android/releases/V68.18-ANDROID-HOME-WIDGET-REPORT.json
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish V68.17 APK in repository
+      - name: Publish V68.18 APK in repository
         continue-on-error: true
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.17-VOIR-ALBUM-BUTTON-UI.apk
-          git add -f audify-android/releases/V68.17-VOIR-ALBUM-BUTTON-UI-REPORT.json
+          git add -f audify-android/releases/Audify-V68.18-ANDROID-HOME-WIDGET.apk
+          git add -f audify-android/releases/V68.18-ANDROID-HOME-WIDGET-REPORT.json
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.17 Frozen Album Engine APK'
+          git commit -m 'Publish Audify V68.18 Android Home Widget APK'
           git pull --rebase origin main
           git push origin HEAD:main
