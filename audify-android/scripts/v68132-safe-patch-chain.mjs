@@ -22,7 +22,6 @@ for(const cmd of filtered){
   execSync(cmd,{cwd:root,stdio:'inherit',shell:true});
 }
 
-// Required late patches. They run after every historical patch and therefore own the final output.
 for(const script of [
   'scripts/v68131-clickable-album-tracks.mjs',
   'scripts/v681311-album-track-state-fix.mjs',
@@ -41,6 +40,7 @@ for(const script of [
   'scripts/v68158-localized-official-metadata.mjs',
   'scripts/v68159-artist-identity-fusion.mjs',
   'scripts/v68160-release-preference-intelligence.mjs',
+  'scripts/v68161-apple-release-graph.mjs',
   'scripts/v68132-restore-exact-gradient-a-splash.mjs',
   'scripts/v681322-android12-splash-theme-fix.mjs',
   'scripts/v681321-splash-safety-lock.mjs'
@@ -48,4 +48,4 @@ for(const script of [
   execSync(`node ${script}`,{cwd:root,stdio:'inherit',shell:true});
 }
 
-console.log('Audify V68.16 safe patch chain complete: Release Preference Intelligence + Artist Identity Fusion + catalogue cross-checks + playback continuity + Gradient-A splash lock.');
+console.log('Audify V68.16.1 safe patch chain complete: Apple Release Graph + Release Preference Intelligence + Artist Identity Fusion + catalogue cross-checks + playback continuity + Gradient-A splash lock.');
