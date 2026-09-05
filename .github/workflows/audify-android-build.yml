@@ -1,4 +1,4 @@
-name: Build Audify Android V68.15.3 Canonical Artist Album Guard
+name: Build Audify Android V68.15.4 Playback Continuity + Timestamps
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: audify-android-v68153-${{ github.ref }}
+  group: audify-android-v68154-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -58,23 +58,26 @@ jobs:
         working-directory: audify-android
         run: node scripts/v68132-safe-patch-chain.mjs
 
-      - name: Build V68.15.3 APK
+      - name: Build V68.15.4 APK
         working-directory: audify-android/android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Prepare V68.15.3 APK and permanent verification
+      - name: Prepare V68.15.4 APK and permanent verification
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.15.3-CANONICAL-ARTIST-ALBUM-GUARD.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.15.4-PLAYBACK-CONTINUITY-TIMESTAMPS.apk
           python - <<'PY'
           import json, os, re, zipfile
-          p='audify-android/releases/Audify-V68.15.3-CANONICAL-ARTIST-ALBUM-GUARD.apk'
+          p='audify-android/releases/Audify-V68.15.4-PLAYBACK-CONTINUITY-TIMESTAMPS.apk'
           with zipfile.ZipFile(p) as z:
               dex=[n for n in z.namelist() if re.fullmatch(r'classes\d*\.dex',n)]
               all_dex=b''.join(z.read(n) for n in dex)
           required={
+              'resolver_continuity':b'AUDIFY_V68154_RESOLVER_CONTINUITY',
+              'playback_continuity':b'AUDIFY_V68154_PLAYBACK_CONTINUITY',
+              'player_timestamps':b'AUDIFY_V68154_PLAYER_TIMESTAMPS',
               'ytmusic_primary_resolver':b'AUDIFY_V6815_YTMUSIC_PRIMARY_RESOLVER',
               'ytmusic_direct_album_relation':b'YTMUSIC_DIRECT_ALBUM_RELATION',
               'ytmusic_coherence_guard':b'AUDIFY_V68151_YTMUSIC_COHERENCE_GUARD',
@@ -96,7 +99,7 @@ jobs:
               'pulse_ring':b'startRingPulse',
               'pulse_logo_shell':b'logoShell',
           }
-          report={'version':'V68.15.3','bytes':os.path.getsize(p),'dex':dex}
+          report={'version':'V68.15.4','bytes':os.path.getsize(p),'dex':dex}
           for k,v in required.items(): report[k]=v in all_dex
           for k,v in forbidden.items(): report[k]=v in all_dex
           missing=[k for k in required if not report[k]]
@@ -104,29 +107,29 @@ jobs:
           if missing: raise SystemExit('Required Audify markers missing: '+', '.join(missing))
           if bad: raise SystemExit('Forbidden legacy behavior detected: '+', '.join(bad))
           print(json.dumps(report,indent=2,ensure_ascii=False))
-          open('audify-android/releases/V68.15.3-CANONICAL-ARTIST-ALBUM-GUARD-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
+          open('audify-android/releases/V68.15.4-PLAYBACK-CONTINUITY-TIMESTAMPS-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
           PY
 
-      - name: Upload V68.15.3 APK artifact
+      - name: Upload V68.15.4 APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.15.3-CANONICAL-ARTIST-ALBUM-GUARD-APK
+          name: Audify-V68.15.4-PLAYBACK-CONTINUITY-TIMESTAMPS-APK
           path: |
-            audify-android/releases/Audify-V68.15.3-CANONICAL-ARTIST-ALBUM-GUARD.apk
-            audify-android/releases/V68.15.3-CANONICAL-ARTIST-ALBUM-GUARD-REPORT.json
+            audify-android/releases/Audify-V68.15.4-PLAYBACK-CONTINUITY-TIMESTAMPS.apk
+            audify-android/releases/V68.15.4-PLAYBACK-CONTINUITY-TIMESTAMPS-REPORT.json
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish V68.15.3 APK in repository
+      - name: Publish V68.15.4 APK in repository
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.15.3-CANONICAL-ARTIST-ALBUM-GUARD.apk
-          git add -f audify-android/releases/V68.15.3-CANONICAL-ARTIST-ALBUM-GUARD-REPORT.json
+          git add -f audify-android/releases/Audify-V68.15.4-PLAYBACK-CONTINUITY-TIMESTAMPS.apk
+          git add -f audify-android/releases/V68.15.4-PLAYBACK-CONTINUITY-TIMESTAMPS-REPORT.json
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.15.3 Canonical Artist Album Guard APK'
+          git commit -m 'Publish Audify V68.15.4 Playback Continuity + Timestamps APK'
           git pull --rebase origin main
           git push origin HEAD:main
