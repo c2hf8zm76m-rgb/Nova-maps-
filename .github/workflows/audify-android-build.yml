@@ -1,4 +1,4 @@
-name: Build Audify Android V68.15.5 Canonical Album Cross-Check
+name: Build Audify Android V68.15.6 Official Metadata Identity
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: audify-android-v68155-${{ github.ref }}
+  group: audify-android-v68156-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -58,23 +58,26 @@ jobs:
         working-directory: audify-android
         run: node scripts/v68132-safe-patch-chain.mjs
 
-      - name: Build V68.15.5 APK
+      - name: Build V68.15.6 APK
         working-directory: audify-android/android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Prepare V68.15.5 APK and permanent verification
+      - name: Prepare V68.15.6 APK and permanent verification
         run: |
           mkdir -p audify-android/releases
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.15.5-CANONICAL-ALBUM-CROSSCHECK.apk
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk audify-android/releases/Audify-V68.15.6-OFFICIAL-METADATA-IDENTITY.apk
           python - <<'PY'
           import json, os, re, zipfile
-          p='audify-android/releases/Audify-V68.15.5-CANONICAL-ALBUM-CROSSCHECK.apk'
+          p='audify-android/releases/Audify-V68.15.6-OFFICIAL-METADATA-IDENTITY.apk'
           with zipfile.ZipFile(p) as z:
               dex=[n for n in z.namelist() if re.fullmatch(r'classes\d*\.dex',n)]
               all_dex=b''.join(z.read(n) for n in dex)
           required={
+              'official_metadata_identity':b'AUDIFY_V68156_OFFICIAL_METADATA_IDENTITY',
+              'description_artist_proof':b'AUDIFY_V68156_DESCRIPTION_ARTIST_PROOF',
+              'description_album_proof':b'AUDIFY_V68156_DESCRIPTION_ALBUM_PROOF',
               'deezer_canonical_album_crosscheck':b'AUDIFY_V68155_DEEZER_CANONICAL_ALBUM_CROSSCHECK',
               'deezer_tracklist_proof':b'AUDIFY_V68155_DEEZER_TRACKLIST_PROOF',
               'resolver_continuity':b'AUDIFY_V68154_RESOLVER_CONTINUITY',
@@ -101,7 +104,7 @@ jobs:
               'pulse_ring':b'startRingPulse',
               'pulse_logo_shell':b'logoShell',
           }
-          report={'version':'V68.15.5','bytes':os.path.getsize(p),'dex':dex}
+          report={'version':'V68.15.6','bytes':os.path.getsize(p),'dex':dex}
           for k,v in required.items(): report[k]=v in all_dex
           for k,v in forbidden.items(): report[k]=v in all_dex
           missing=[k for k in required if not report[k]]
@@ -109,29 +112,29 @@ jobs:
           if missing: raise SystemExit('Required Audify markers missing: '+', '.join(missing))
           if bad: raise SystemExit('Forbidden legacy behavior detected: '+', '.join(bad))
           print(json.dumps(report,indent=2,ensure_ascii=False))
-          open('audify-android/releases/V68.15.5-CANONICAL-ALBUM-CROSSCHECK-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
+          open('audify-android/releases/V68.15.6-OFFICIAL-METADATA-IDENTITY-REPORT.json','w').write(json.dumps(report,indent=2,ensure_ascii=False))
           PY
 
-      - name: Upload V68.15.5 APK artifact
+      - name: Upload V68.15.6 APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V68.15.5-CANONICAL-ALBUM-CROSSCHECK-APK
+          name: Audify-V68.15.6-OFFICIAL-METADATA-IDENTITY-APK
           path: |
-            audify-android/releases/Audify-V68.15.5-CANONICAL-ALBUM-CROSSCHECK.apk
-            audify-android/releases/V68.15.5-CANONICAL-ALBUM-CROSSCHECK-REPORT.json
+            audify-android/releases/Audify-V68.15.6-OFFICIAL-METADATA-IDENTITY.apk
+            audify-android/releases/V68.15.6-OFFICIAL-METADATA-IDENTITY-REPORT.json
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish V68.15.5 APK in repository
+      - name: Publish V68.15.6 APK in repository
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f audify-android/releases/Audify-V68.15.5-CANONICAL-ALBUM-CROSSCHECK.apk
-          git add -f audify-android/releases/V68.15.5-CANONICAL-ALBUM-CROSSCHECK-REPORT.json
+          git add -f audify-android/releases/Audify-V68.15.6-OFFICIAL-METADATA-IDENTITY.apk
+          git add -f audify-android/releases/V68.15.6-OFFICIAL-METADATA-IDENTITY-REPORT.json
           if git diff --cached --quiet; then
             echo 'APK unchanged'
             exit 0
           fi
-          git commit -m 'Publish Audify V68.15.5 Canonical Album Cross-Check APK'
+          git commit -m 'Publish Audify V68.15.6 Official Metadata Identity APK'
           git pull --rebase origin main
           git push origin HEAD:main
