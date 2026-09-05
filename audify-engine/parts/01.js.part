@@ -1,0 +1,67 @@
+'use strict';
+
+const UA = 'AudifyWebAlbumEngine/70.5.5 (https://github.com/c2hf8zm76m-rgb/Nova-maps-)';
+const CACHE = new Map();
+const CFG_CACHE = { value: null, at: 0 };
+const HOUR = 3600_000;
+const DAY = 86400_000;
+
+const EDITION_WORDS = [
+  'deluxe','expanded','anniversary','collector','collectors','remaster','remastered',
+  'live','karaoke','instrumental','greatest hits','best of','compilation','anthology','edition'
+];
+const BAD_TRACK_WORDS = ['sped up','slowed','nightcore','karaoke','instrumental','cover','lyrics','lyric video'];
+
+function cors(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=86400');
+}
+function send(res, status, body) {
+  cors(res); res.statusCode = status; res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.end(JSON.stringify(body));
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function timeoutSignal(ms){ const c=new AbortController(); const t=setTimeout(()=>c.abort(),ms); return {signal:c.signal,done:()=>clearTimeout(t)}; }
+async function fetchText(url, opts={}, ms=9000){ const t=timeoutSignal(ms); try{const r=await fetch(url,{...opts,signal:t.signal,headers:{'User-Agent':UA,'Accept-Language':'fr-FR,fr;q=0.9,en;q=0.7',...(opts.headers||{})}}); if(!r.ok) throw new Error(`HTTP ${r.status} ${url}`); return await r.text();} finally{t.done();} }
+async function fetchJson(url, opts={}, ms=9000){ const txt=await fetchText(url,opts,ms); try{return JSON.parse(txt)}catch{throw new Error(`JSON invalide ${url}`)} }
+function safe(v){return String(v??'').trim();}
+function norm(v){return safe(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();}
+function cleanArtist(v){return safe(v)
+  .replace(/\s*-\s*topic\s*$/i,'').replace(/\s+vevo\s*$/i,'')
+  .replace(/\s+(official|officiel(?:le)?|oficial|ufficiale|offiziell)(?:\s+(music|artist|channel|chaine|chaîne))?\s*$/i,'')
+  .replace(/^\s*(chaine|chaîne|channel)\s+(officielle?|official)\s+(de|of)\s+/i,'').trim();}
+function cleanTitle(v){return safe(v)
+  .replace(/\s*[\[(][^\])]*(official|officiel|clip|music\s*video|video|audio|visualizer|lyrics?|paroles|4k|hd|mv)[^\])]*[\])]\s*/ig,' ')
+  .replace(/\s*[-|]\s*(official|officiel|video|audio|visualizer|lyrics?).*$/i,'')
+  .replace(/\s+(feat\.?|ft\.?|featuring)\s+.+$/i,'')
+  .replace(/\s+/g,' ').trim();}
+function family(v){let x=norm(v); for(const w of EDITION_WORDS)x=x.replace(new RegExp(`\\b${w.replace(/ /g,'\\s+')}\\b`,'g'),' '); return x.replace(/\b(ep|single)\b/g,' ').replace(/\s+/g,' ').trim();}
+function tokens(v){return new Set(norm(v).split(' ').filter(Boolean));}
+function sim(a,b){const A=norm(a),B=norm(b); if(!A||!B)return 0; if(A===B)return 1; if(A.includes(B)||B.includes(A))return Math.min(A.length,B.length)/Math.max(A.length,B.length)*.25+.72; const ta=tokens(A),tb=tokens(B); let inter=0; for(const x of ta)if(tb.has(x))inter++; const union=new Set([...ta,...tb]).size||1; const jac=inter/union; const pref=(A.split(' ')[0]===B.split(' ')[0])?.06:0; return Math.min(1,jac*.92+pref);}
+function durationScore(a,b){a=Number(a)||0;b=Number(b)||0;if(!a||!b)return 0;const d=Math.abs(a-b);if(d<=2500)return 1;if(d<=5000)return .88;if(d<=9000)return .68;if(d<=15000)return .4;if(d<=30000)return .1;return -1;}
+function badEditionPenalty(albumTitle, wantedTitle='', hint=''){const a=norm(albumTitle), wanted=norm(`${wantedTitle} ${hint}`);let p=0;for(const w of EDITION_WORDS){if(a.includes(w)&&!wanted.includes(w))p+=w==='compilation'||w==='greatest hits'||w==='best of'?22:10;}if(/\bsingle\b/.test(a)&&!wanted.includes('single'))p+=30;if(/\bep\b/.test(a)&&!wanted.includes(' ep'))p+=16;return p;}
+function meaningfulArtist(a){const x=norm(a);return x&&!['youtube','various artists','various','topic','music'].includes(x);}
+function extractAlbumHint(text){const s=safe(text); if(!s)return '';
+  const pats=[
+    /(?:appears on|featured on|from|taken from)\s+(?:the\s+)?album\s+["“']?([^\n"”']{2,100})/i,
+    /(?:extrait de|issu de|disponible sur|tiré de)\s+(?:l['’]\s*)?album\s+["“']?([^\n"”']{2,100})/i,
+    /(?:album|release)\s*[:\-]\s*["“']?([^\n"”']{2,100})/i
+  ];
+  for(const p of pats){const m=s.match(p);if(m){return m[1].replace(/\s*(?:https?:\/\/\S+|©.*)$/,'').trim();}}
+  return '';
+}
+function image600(u){return safe(u).replace(/\/\d+x\d+bb\./,'/600x600bb.').replace(/\/100x100bb\./,'/600x600bb.');}
+function pickYear(v){const m=safe(v).match(/\b(19|20)\d{2}\b/);return m?Number(m[0]):null;}
+function albumBase(source,o={}){return {source,title:safe(o.title),artist:safe(o.artist),year:o.year||null,cover:safe(o.cover),tracks:Array.isArray(o.tracks)?o.tracks:[],trackCount:Number(o.trackCount)||((o.tracks||[]).length),score:Number(o.score)||0,reason:safe(o.reason),id:safe(o.id),meta:o.meta||{}};}
+function trackProof(tracks,wanted){let best=null,score=-1;for(const t of tracks||[]){const ts=sim(t.title,wanted.title);const as=meaningfulArtist(t.artist)?sim(t.artist,wanted.artist):.5;const ds=durationScore(t.durationMs,wanted.durationMs);let total=ts*62+as*22+(ds>0?ds*16:0);if(BAD_TRACK_WORDS.some(w=>norm(t.title).includes(w))&&!norm(wanted.title).includes(w))total-=18;if(total>score){score=total;best={track:t,titleSim:ts,artistSim:as,durationScore:ds,total};}}return best?{...best,ok:best.titleSim>=.62&&(best.artistSim>=.35||!meaningfulArtist(wanted.artist))&&(best.durationScore!==-1)}:{ok:false,total:0};}
+
+async function ytmConfig(){
+  if(CFG_CACHE.value&&Date.now()-CFG_CACHE.at<6*HOUR)return CFG_CACHE.value;
+  const html=await fetchText('https://music.youtube.com/?hl=fr&gl=FR',{},9000);
+  const grab=(k)=>{const re=new RegExp(`["']${k}["']\\s*:\\s*["']([^"']+)`);return html.match(re)?.[1]||html.match(new RegExp(`${k}\\"?\\s*:\\s*\\"([^\\"]+)`))?.[1]||''};
+  const apiKey=grab('INNERTUBE_API_KEY'); const clientVersion=grab('INNERTUBE_CONTEXT_CLIENT_VERSION')||grab('INNERTUBE_CLIENT_VERSION'); const visitorData=grab('VISITOR_DATA');
+  if(!apiKey||!clientVersion)throw new Error('YTMusic config introuvable');
+  const value={apiKey,clientVersion,visitorData};CFG_CACHE.value=value;CFG_CACHE.at=Date.now();return value;
+}
