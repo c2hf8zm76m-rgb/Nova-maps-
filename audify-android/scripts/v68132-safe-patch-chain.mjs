@@ -40,6 +40,7 @@ for(const script of [
   'scripts/v68157-artist-identity-normalization.mjs',
   'scripts/v68158-localized-official-metadata.mjs',
   'scripts/v68159-artist-identity-fusion.mjs',
+  'scripts/v68160-release-preference-intelligence.mjs',
   'scripts/v68132-restore-exact-gradient-a-splash.mjs',
   'scripts/v681322-android12-splash-theme-fix.mjs',
   'scripts/v681321-splash-safety-lock.mjs'
@@ -47,4 +48,4 @@ for(const script of [
   execSync(`node ${script}`,{cwd:root,stdio:'inherit',shell:true});
 }
 
-console.log('Audify V68.15.9 safe patch chain complete: Artist Identity Fusion + localized official metadata + catalogue cross-checks + playback continuity + Gradient-A splash lock.');
+console.log('Audify V68.16 safe patch chain complete: Release Preference Intelligence + Artist Identity Fusion + catalogue cross-checks + playback continuity + Gradient-A splash lock.');
