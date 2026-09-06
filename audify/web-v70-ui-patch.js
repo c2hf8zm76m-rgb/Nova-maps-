@@ -21,7 +21,7 @@ function installMiniClick(){const mini=$('#miniPlayer');if(!mini||mini.dataset.f
 function refreshRecentSoon(){setTimeout(()=>renderRecent(true),80)}
 function loadScriptOnce(src,attr){if(document.querySelector(`script[${attr}]`))return;const s=document.createElement('script');s.src=src;s.async=true;s.setAttribute(attr,'1');document.body.appendChild(s)}
 function loadAlbumRecognition(){loadScriptOnce('./web-v70-album-recognition.js?v=album-v7055-multisource-2','data-audify-album-recognition')}
-function loadSearchRepair(){loadScriptOnce('./web-v70-search-repair.js?v=search-repair-1','data-audify-search-repair')}
+function loadSearchRepair(){loadScriptOnce('./web-v70-search-repair.js?v=search-repair-2','data-audify-search-repair')}
 function loadKaraoke758(){loadScriptOnce('./web-v70-karaoke-v7058.js?v=karaoke-v7058-1','data-audify-karaoke-v7058')}
 window.addEventListener('message',handleYTMessage,false);armLoadingOnUserPlay();injectLoadingCSS();
 window.addEventListener('DOMContentLoaded',()=>{installMiniClick();setTimeout(()=>renderRecent(true),60);loadSearchRepair();loadAlbumRecognition();loadKaraoke758()});
