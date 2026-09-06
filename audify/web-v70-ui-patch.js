@@ -22,9 +22,10 @@ function refreshRecentSoon(){setTimeout(()=>renderRecent(true),80)}
 function loadScriptOnce(src,attr){if(document.querySelector(`script[${attr}]`))return;const s=document.createElement('script');s.src=src;s.async=true;s.setAttribute(attr,'1');document.body.appendChild(s)}
 function loadAlbumRecognition(){loadScriptOnce('./web-v70-album-recognition.js?v=album-v7055-multisource-2','data-audify-album-recognition')}
 function loadSearchRepair(){loadScriptOnce('./web-v70-search-repair.js?v=search-repair-1','data-audify-search-repair')}
+function loadKaraoke758(){loadScriptOnce('./web-v70-karaoke-v7058.js?v=karaoke-v7058-1','data-audify-karaoke-v7058')}
 window.addEventListener('message',handleYTMessage,false);armLoadingOnUserPlay();injectLoadingCSS();
-window.addEventListener('DOMContentLoaded',()=>{installMiniClick();setTimeout(()=>renderRecent(true),60);loadSearchRepair();loadAlbumRecognition()});
-setTimeout(()=>{installMiniClick();renderRecent(true);loadSearchRepair();loadAlbumRecognition()},250);
+window.addEventListener('DOMContentLoaded',()=>{installMiniClick();setTimeout(()=>renderRecent(true),60);loadSearchRepair();loadAlbumRecognition();loadKaraoke758()});
+setTimeout(()=>{installMiniClick();renderRecent(true);loadSearchRepair();loadAlbumRecognition();loadKaraoke758()},250);
 const home=$('[data-tab="home"]');home?.addEventListener('click',()=>setTimeout(()=>renderRecent(true),0));
 const close=$('#closePlayer');close?.addEventListener('click',()=>{const homeNow=$('[data-tab="home"]');if(homeNow?.classList.contains('on'))refreshRecentSoon()});
 const mini=$('#miniPlayer');if(mini){new MutationObserver(()=>installMiniClick()).observe(mini,{attributes:true,attributeFilter:['class']})}
