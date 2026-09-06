@@ -40,7 +40,7 @@ if(!java.includes('AUDIFY_V7062_LYRICS_ANIMATION_RESTORE')){
             v.setTextViewText(R.id.audify_lyrics_line_b,line);
             v.setTextViewText(R.id.audify_lyrics_next_b,next);
         }
-        v.setDisplayedChild(R.id.audify_lyrics_flipper,targetSlot);
+        v.setInt(R.id.audify_lyrics_flipper,"setDisplayedChild",targetSlot);
         if(firstFrame||lineChanged||targetSlot!=previousSlot){
             p.edit().putString(animLineKey,line).putInt(animSlotKey,targetSlot).apply();
         }`;
