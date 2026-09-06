@@ -72,10 +72,9 @@ jobs:
         working-directory: audify-android
         run: |
           node scripts/v7062-lyrics-animation-restore.mjs
-          # Some Android SDKs do not expose the cubic platform interpolator resource names.
-          # The fade + translation animation remains smooth without an explicit interpolator.
-          sed -i '/android:interpolator=/d' android/app/src/main/res/anim/audify_lyrics_in.xml
-          sed -i '/android:interpolator=/d' android/app/src/main/res/anim/audify_lyrics_out.xml
+          # Keep the opening <set> tag valid while removing unsupported interpolators.
+          sed -i 's#^[[:space:]]*android:interpolator=.*>$#>#' android/app/src/main/res/anim/audify_lyrics_in.xml
+          sed -i 's#^[[:space:]]*android:interpolator=.*>$#>#' android/app/src/main/res/anim/audify_lyrics_out.xml
 
       - name: Verify V70.6.2 source hooks
         working-directory: audify-android
@@ -92,6 +91,8 @@ jobs:
           test -f android/app/src/main/res/anim/audify_lyrics_out.xml
           ! grep -q 'android:interpolator=' android/app/src/main/res/anim/audify_lyrics_in.xml
           ! grep -q 'android:interpolator=' android/app/src/main/res/anim/audify_lyrics_out.xml
+          grep -q '^>$' android/app/src/main/res/anim/audify_lyrics_in.xml
+          grep -q '^>$' android/app/src/main/res/anim/audify_lyrics_out.xml
 
       - name: Build APK
         working-directory: audify-android/android
