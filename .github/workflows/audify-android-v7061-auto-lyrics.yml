@@ -1,4 +1,4 @@
-name: Build Audify Android V70.6.1 Auto Lyrics
+name: Build Audify Android V70.6.2 Auto Lyrics Animated
 
 on:
   workflow_dispatch:
@@ -8,13 +8,14 @@ on:
       - 'audify/**'
       - 'audify-android/**'
       - '!audify-android/releases/**'
+      - '.github/scripts/v7062-lyrics-animation.mjs'
       - '.github/workflows/audify-android-v7061-auto-lyrics.yml'
 
 permissions:
   contents: read
 
 concurrency:
-  group: audify-v7061-auto-lyrics-${{ github.ref }}
+  group: audify-v7062-auto-lyrics-animated-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -68,15 +69,22 @@ jobs:
         working-directory: audify-android
         run: node scripts/v7061-hook-compat.mjs
 
-      - name: Verify V70.6.1 source hooks
+      - name: Restore V70.6.2 smooth lyrics animation
+        working-directory: audify-android
+        run: node ../.github/scripts/v7062-lyrics-animation.mjs
+
+      - name: Verify V70.6.2 source hooks
         working-directory: audify-android
         run: |
-          grep -q 'versionCode 7061' android/app/build.gradle
-          grep -q 'versionName "70.6.1"' android/app/build.gradle
+          grep -q 'versionCode 7062' android/app/build.gradle
+          grep -q 'versionName "70.6.2"' android/app/build.gradle
           grep -q 'AUDIFY_V7061_AUTO_LYRICS_BACKGROUND' android/app/src/main/java/com/nova/audify/AudifyAutoLyricsResolver.java
           grep -q 'AUDIFY_V7061_AUTO_LYRICS_SERVICE_HOOK' android/app/src/main/java/com/nova/audify/AudifyPlaybackService.java
+          grep -q 'AUDIFY_V7062_LYRICS_ANIMATION' android/app/src/main/java/com/nova/audify/AudifyLyricsWidget.java
+          grep -q 'audify_lyrics_flipper' android/app/src/main/res/layout/audify_widget_lyrics.xml
           grep -q 'publishLyricsTimeline' android/app/src/main/java/com/nova/audify/AudifyWidgetFamilyState.java
-          test -f android/app/src/main/res/layout/audify_widget_lyrics.xml
+          test -f android/app/src/main/res/anim/audify_lyrics_in.xml
+          test -f android/app/src/main/res/anim/audify_lyrics_out.xml
 
       - name: Build APK
         working-directory: audify-android/android
@@ -87,27 +95,27 @@ jobs:
       - name: Prepare APK
         run: |
           mkdir -p out
-          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk out/Audify-V70.6.1-AUTO-LYRICS-BACKGROUND.apk
-          sha256sum out/Audify-V70.6.1-AUTO-LYRICS-BACKGROUND.apk | tee out/SHA256.txt
+          cp audify-android/android/app/build/outputs/apk/debug/app-debug.apk out/Audify-V70.6.2-AUTO-LYRICS-ANIMATED.apk
+          sha256sum out/Audify-V70.6.2-AUTO-LYRICS-ANIMATED.apk | tee out/SHA256.txt
 
       - name: Verify compiled markers
         run: |
           python - <<'PY'
           import re,zipfile
-          p='out/Audify-V70.6.1-AUTO-LYRICS-BACKGROUND.apk'
+          p='out/Audify-V70.6.2-AUTO-LYRICS-ANIMATED.apk'
           with zipfile.ZipFile(p) as z:
               dex=b''.join(z.read(n) for n in z.namelist() if re.fullmatch(r'classes\d*\.dex',n))
-          for marker in [b'AUDIFY_V7061_AUTO_LYRICS_BACKGROUND',b'AUDIFY_V68190_LYRICS_TIMELINE_BRIDGE']:
+          for marker in [b'AUDIFY_V7061_AUTO_LYRICS_BACKGROUND',b'AUDIFY_V7062_LYRICS_ANIMATION',b'AUDIFY_V68190_LYRICS_TIMELINE_BRIDGE']:
               if marker not in dex: raise SystemExit('missing compiled marker '+marker.decode())
-          print('V70.6.1 compiled markers verified')
+          print('V70.6.2 compiled markers verified')
           PY
 
-      - name: Upload V70.6.1 APK
+      - name: Upload V70.6.2 APK
         uses: actions/upload-artifact@v4
         with:
-          name: Audify-V70.6.1-AUTO-LYRICS-BACKGROUND
+          name: Audify-V70.6.2-AUTO-LYRICS-ANIMATED
           path: |
-            out/Audify-V70.6.1-AUTO-LYRICS-BACKGROUND.apk
+            out/Audify-V70.6.2-AUTO-LYRICS-ANIMATED.apk
             out/SHA256.txt
           if-no-files-found: error
           retention-days: 30
